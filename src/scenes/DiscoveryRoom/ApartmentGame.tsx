@@ -102,6 +102,14 @@ export const ApartmentGame: React.FC = () => {
     modalOpenRef.current = !!activePresent || envelopeModalOpen;
   }, [activePresent, envelopeModalOpen]);
 
+  // Preload present keepsake pictures in the browser cache
+  useEffect(() => {
+    ['/IMG-20251014-WA0000.jpg', '/IMG-20261014-WA0023.jpg', '/Screenshot_20251016_171306_WhatsApp.jpg'].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   // Apartment container ref
   const apartmentRef = useRef<HTMLDivElement>(null);
   const joystickBaseRef = useRef<HTMLDivElement>(null);

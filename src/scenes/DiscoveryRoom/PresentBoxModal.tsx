@@ -32,7 +32,7 @@ const getCardBg = (boxColor: string) => {
 
 export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClose }) => {
   const audio = useAudio();
-  const [photoUrl] = useState<string>(present.photoUrl);
+  const photoUrl = present.photoUrl;
   const [isDone, setIsDone] = useState<boolean>(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -179,9 +179,14 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
         {
           y: 160,
           scale: 0.65,
-          opacity: 0.05,
+          opacity: 0,
           duration: 2.1,
           ease: 'power2.inOut',
+          onComplete: () => {
+            if (giftBoxWrapperRef.current) {
+              giftBoxWrapperRef.current.style.display = 'none';
+            }
+          },
         },
         '-=0.4'
       )
@@ -249,7 +254,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
           {/* RISING KEEPSAKE CARD: Stays strictly within view height, non-scrollable */}
           <div
             ref={presentCardRef}
-            className={`w-[94vw] max-w-lg sm:max-w-xl md:max-w-2xl max-h-[92dvh] border-[3.5px] sm:border-[4px] border-deep-ink shadow-[8px_8px_0px_#1E1B4B] sm:shadow-[10px_10px_0px_#1E1B4B] rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col items-center justify-between text-center z-20 ${
+            className={`w-[94vw] max-w-lg sm:max-w-xl md:max-w-2xl max-h-[88dvh] border-[3.5px] sm:border-[4px] border-deep-ink shadow-[8px_8px_0px_#1E1B4B] sm:shadow-[10px_10px_0px_#1E1B4B] rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col items-center justify-between text-center z-20 ${
               isDone ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             style={{
@@ -257,23 +262,25 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             }}
           >
             {/* Custom Photo Frame: Head guaranteed to show, brought down with top padding, zero cropping */}
-            <div className="w-full flex-1 min-h-0 h-[48dvh] sm:h-[54dvh] max-h-[48dvh] sm:max-h-[500px] rounded-xl sm:rounded-2xl border-[3px] sm:border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/70 shadow-inner p-2 pt-3 sm:p-3 sm:pt-4 mb-1.5 relative flex items-center justify-center">
-              <div className="relative w-full h-full flex items-center justify-center">
-                <img
-                  src={photoUrl}
-                  alt={present.title}
-                  className="absolute inset-0 w-full h-full block rounded-lg sm:rounded-xl shadow-sm"
-                  style={{
-                    objectFit: 'contain',
-                    objectPosition: 'center top',
-                  }}
-                />
-              </div>
+            <div className="w-full flex-1 min-h-0 h-[44dvh] sm:h-[50dvh] max-h-[380px] sm:max-h-[460px] rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/80 shadow-inner p-2 pt-3.5 sm:p-3 sm:pt-4 mb-2 flex items-center justify-center">
+              <img
+                src={photoUrl}
+                alt={present.title}
+                className="max-w-full max-h-full w-auto h-auto object-contain block rounded-lg shadow-sm"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  objectPosition: 'center top',
+                }}
+              />
             </div>
 
             {/* Just beneath the picture with handwriting: single line */}
-            <div className="w-full py-0.5 flex-shrink-0">
-              <p className="font-handwritten text-2xl sm:text-4xl md:text-5xl font-bold text-coral text-center tracking-wide leading-tight">
+            <div className="w-full py-0.5 sm:py-1 flex-shrink-0">
+              <p className="font-handwritten text-2xl sm:text-3xl md:text-4xl font-bold text-coral text-center tracking-wide leading-tight">
                 {present.message}
               </p>
             </div>
