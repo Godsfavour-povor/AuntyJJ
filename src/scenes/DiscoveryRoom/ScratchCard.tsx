@@ -7,6 +7,7 @@ interface ScratchCardProps {
   isCompleted: boolean;
   children: React.ReactNode;
   containerClassName?: string;
+  showControls?: boolean;
 }
 
 export const ScratchCard: React.FC<ScratchCardProps> = ({
@@ -14,6 +15,7 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
   isCompleted,
   children,
   containerClassName,
+  showControls = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,6 +53,23 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
 
     // Center Stamp Callout
     ctx.save();
+    const badgeW = Math.min(w * 0.85, 360);
+    const badgeH = 54;
+    const badgeX = (w - badgeW) / 2;
+    const badgeY = (h - badgeH) / 2;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.strokeStyle = '#1E1B4B';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    if (typeof (ctx as unknown as { roundRect?: (...args: number[]) => void }).roundRect === 'function') {
+      (ctx as unknown as { roundRect: (...args: number[]) => void }).roundRect(badgeX, badgeY, badgeW, badgeH, 27);
+    } else {
+      ctx.rect(badgeX, badgeY, badgeW, badgeH);
+    }
+    ctx.fill();
+    ctx.stroke();
+
     ctx.font = 'bold 16px "Fredoka", sans-serif';
     ctx.fillStyle = '#1E1B4B';
     ctx.textAlign = 'center';
@@ -138,26 +157,40 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     ctx.fill();
   }, []);
 
-  // Initialize Canvas
+  // Initialize Canvas & keep size in sync with container
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
-    if (!container || !canvas) return;
+    if (!container || !canvas || isCompleted) return;
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    const updateCanvasSize = () => {
+      const rect = container.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    const rect = container.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
 
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+        paintOverlay(canvas, ctx);
+      }
+    };
 
-    ctx.scale(dpr, dpr);
-    paintOverlay(canvas, ctx);
-  }, [paintOverlay]);
+    updateCanvasSize();
+
+    const ro = new ResizeObserver(() => {
+      if (!isCompleted) {
+        updateCanvasSize();
+      }
+    });
+    ro.observe(container);
+
+    return () => ro.disconnect();
+  }, [paintOverlay, isCompleted]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isCompleted) return;
@@ -215,7 +248,7 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-md mx-auto select-none">
+    <div className="flex flex-col items-center w-full mx-auto select-none">
       <div
         ref={containerRef}
         className={
@@ -224,11 +257,11 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
         }
       >
         {/* Revealed Secret Card Content */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           {children}
         </div>
 
-        {/* Scratch Canvas Foil */}
+        {/* Scratch Canvas Foil covering 100% of modal */}
         {!isCompleted && (
           <canvas
             ref={canvasRef}
@@ -236,15 +269,15 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className="absolute inset-0 w-full h-full touch-none cursor-pointer"
+            className="absolute inset-0 w-full h-full touch-none cursor-pointer rounded-[inherit]"
             style={{ zIndex: 20 }}
           />
         )}
       </div>
 
-      {/* Progress & Quick Reveal Controls */}
-      {!isCompleted && (
-        <div className="w-full flex items-center justify-between px-2 mt-3.5 text-xs">
+      {/* Progress & Quick Reveal Controls (Optional) */}
+      {showControls && !isCompleted && (
+        <div className="w-full max-w-md flex items-center justify-between px-2 mt-3 text-xs">
           <div className="flex items-center gap-2 font-display font-semibold text-deep-ink">
             <span>Uncovered: {scratchProgress}%</span>
             <div className="w-24 h-2 rounded-full bg-white border border-deep-ink overflow-hidden">
@@ -257,7 +290,7 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
 
           <button
             onClick={triggerDissolve}
-            className="px-3.5 py-1.5 rounded-full bg-white hover:bg-yellow text-deep-ink border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[2px_2px_0px_#1E1B4B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
+            className="px-3.5 py-1.5 rounded-full bg-white hover:bg-yellow text-deep-ink border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[2px_2px_0px_#1E1B4B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all cursor-pointer"
           >
             Reveal Instantly ✨
           </button>

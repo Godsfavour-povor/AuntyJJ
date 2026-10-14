@@ -6,7 +6,8 @@ import { PipCharacter } from '../../components/Character/PipCharacter';
 import { ScratchCard } from '../DiscoveryRoom/ScratchCard';
 
 export const BirthdayFinale: React.FC = () => {
-  const { replayAdventure, characterMood, scratchCompleted, completeScratch } = useAdventure();
+  const { replayAdventure, characterMood, completeScratch } = useAdventure();
+  const [isScratched, setIsScratched] = useState<boolean>(false);
   const [celebrationFired, setCelebrationFired] = useState<boolean>(false);
 
   const handleFireConfetti = () => {
@@ -34,8 +35,14 @@ export const BirthdayFinale: React.FC = () => {
     fire(0.1, { spread: 120, startVelocity: 45 });
   };
 
+  const handleScratchComplete = () => {
+    setIsScratched(true);
+    completeScratch();
+    handleFireConfetti();
+  };
+
   return (
-    <div className="relative h-screen h-[100dvh] max-h-screen w-full flex flex-col items-center justify-between p-3 sm:p-5 overflow-hidden bg-gradient-to-b from-[#FEF08A] via-[#FFFDF8] to-[#FCE7F3] select-none">
+    <div className="relative h-screen h-[100dvh] max-h-screen w-full flex flex-col items-center justify-between p-3.5 sm:p-6 overflow-hidden bg-gradient-to-b from-[#FEF08A] via-[#FFFDF8] to-[#FCE7F3] select-none">
       {/* Decorative Confetti Polka Dots in background */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-50">
         {[...Array(24)].map((_, i) => (
@@ -54,42 +61,35 @@ export const BirthdayFinale: React.FC = () => {
         ))}
       </div>
 
-      {/* Top Header Card */}
-      <header className="relative z-10 text-center max-w-xl pt-1.5 sm:pt-4 flex-shrink-0">
-        <span className="inline-block px-3 py-0.5 rounded-full bg-coral text-white text-[11px] sm:text-xs font-display font-extrabold uppercase tracking-wider shadow-[2px_2px_0px_#1E1B4B]">
-          Grand Birthday Finale 🎈
-        </span>
-        <h1 className="text-xl sm:text-4xl font-display font-black text-deep-ink tracking-tight mt-1 drop-shadow-sm">
-          A Final Scratch Surprise For You! ✨
-        </h1>
-      </header>
+      {/* Top spacing (Header completely removed as requested) */}
+      <div className="h-2 sm:h-4 flex-shrink-0" />
 
-      {/* Center: The Scratch Card with 1-2 liner "Happy Birthday" */}
-      <main className="relative z-10 w-full max-w-md my-auto flex flex-col items-center justify-center px-3">
+      {/* Center: Enlarged Scratch Modal with full-coverage scratch foil */}
+      <main className="relative z-10 w-full max-w-lg sm:max-w-xl md:max-w-2xl my-auto flex flex-col items-center justify-center px-2 sm:px-4">
         <ScratchCard
-          onCompleted={completeScratch}
-          isCompleted={scratchCompleted}
-          containerClassName="relative w-full h-[38vh] sm:h-[44vh] max-h-[290px] [@media(max-height:560px)]:h-[46vh] [@media(max-height:560px)]:max-h-[175px] rounded-3xl overflow-hidden shadow-[8px_8px_0px_#1E1B4B] border-[3.5px] border-deep-ink bg-white flex items-center justify-center"
+          onCompleted={handleScratchComplete}
+          isCompleted={isScratched}
+          containerClassName="relative w-full h-[48vh] sm:h-[54vh] md:h-[58vh] max-h-[440px] [@media(max-height:560px)]:h-[64vh] [@media(max-height:560px)]:max-h-[250px] rounded-[28px] sm:rounded-[36px] overflow-hidden shadow-[10px_10px_0px_#1E1B4B] border-[4px] border-deep-ink bg-white flex items-center justify-center"
         >
           {/* Revealed Secret Content: One or Two-Liner Happy Birthday */}
-          <div className="w-full h-full p-3 sm:p-6 flex flex-col items-center justify-center text-center bg-gradient-to-b from-amber-50 to-rose-50 select-none">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 [@media(max-height:560px)]:w-8 [@media(max-height:560px)]:h-8 rounded-full bg-yellow border-[2.5px] sm:border-[3px] border-deep-ink flex items-center justify-center text-xl sm:text-3xl shadow-[2px_2px_0px_#1E1B4B] mb-1 sm:mb-2 animate-bounce">
+          <div className="w-full h-full p-4 sm:p-8 flex flex-col items-center justify-center text-center bg-gradient-to-b from-amber-50 via-[#FFFDF9] to-rose-50 select-none">
+            <div className="w-14 h-14 sm:w-20 sm:h-20 [@media(max-height:560px)]:w-10 [@media(max-height:560px)]:h-10 rounded-full bg-yellow border-[3px] sm:border-[3.5px] border-deep-ink flex items-center justify-center text-2xl sm:text-4xl shadow-[3px_3px_0px_#1E1B4B] mb-2 sm:mb-3 animate-bounce">
               🎂
             </div>
-            <h2 className="text-2xl sm:text-5xl font-display font-black text-coral tracking-tight leading-tight drop-shadow-sm">
+            <h2 className="text-3xl sm:text-5xl md:text-6xl font-display font-black text-coral tracking-tight leading-tight drop-shadow-sm">
               Happy Birthday! 🎉
             </h2>
-            <p className="font-handwritten text-lg sm:text-3xl font-bold text-deep-ink mt-1 sm:mt-2 leading-snug">
+            <p className="font-handwritten text-xl sm:text-3xl md:text-4xl font-bold text-deep-ink mt-2 sm:mt-3 leading-snug max-w-lg">
               Wishing you endless joy, love &amp; blessings today and always! ❤️
             </p>
           </div>
         </ScratchCard>
 
         {/* Action Buttons: "Confetti! 🎊" and "Start Again ↺" */}
-        <div className="flex flex-row items-center justify-center gap-2.5 sm:gap-3 mt-2.5 sm:mt-4 flex-shrink-0">
+        <div className="flex flex-row items-center justify-center gap-3 sm:gap-4 mt-3 sm:mt-5 flex-shrink-0">
           <button
             onClick={handleFireConfetti}
-            className="flex items-center gap-2 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl bg-coral hover:bg-coral-dark text-white border-[3px] border-deep-ink font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-coral hover:bg-coral-dark text-white border-[3px] border-deep-ink font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider shadow-[3.5px_3.5px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
           >
             <Sparkles className="w-4 h-4 fill-current" />
             <span>Confetti! 🎊</span>
@@ -97,7 +97,7 @@ export const BirthdayFinale: React.FC = () => {
 
           <button
             onClick={replayAdventure}
-            className="flex items-center gap-2 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl bg-white hover:bg-yellow text-deep-ink border-[3px] border-deep-ink font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
+            className="flex items-center gap-2 px-5 sm:px-8 py-3 sm:py-3.5 rounded-2xl bg-white hover:bg-yellow text-deep-ink border-[3px] border-deep-ink font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider shadow-[3.5px_3.5px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Start Again ↺</span>
@@ -105,14 +105,14 @@ export const BirthdayFinale: React.FC = () => {
         </div>
 
         {celebrationFired && (
-          <p className="text-center text-xs font-display font-bold text-turquoise-dark mt-2 animate-fade-in">
+          <p className="text-center text-xs font-display font-bold text-turquoise-dark mt-2.5 animate-fade-in">
             🌟 Here&apos;s to your happiest, brightest, and most blessed year yet! 🌟
           </p>
         )}
       </main>
 
       {/* Footer & Pip Mascot */}
-      <footer className="relative z-10 w-full flex items-center justify-between max-w-md px-4 pb-2 flex-shrink-0">
+      <footer className="relative z-10 w-full flex items-center justify-between max-w-lg sm:max-w-xl md:max-w-2xl px-4 pb-2 sm:pb-3 flex-shrink-0">
         <div className="text-[11px] font-sans font-bold text-deep-ink/60 uppercase tracking-wider">
           Engineered with joy by Godsfavour ❤️
         </div>

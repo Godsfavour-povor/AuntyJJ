@@ -10,7 +10,7 @@ interface CinematicEnvelopeModalProps {
 }
 
 export const CinematicEnvelopeModal: React.FC<CinematicEnvelopeModalProps> = ({ onClose }) => {
-  const { goToScene, completeScratch } = useAdventure();
+  const { goToScene } = useAdventure();
   const audio = useAudio();
 
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
@@ -201,7 +201,6 @@ export const CinematicEnvelopeModal: React.FC<CinematicEnvelopeModalProps> = ({ 
       )
       .call(() => {
         setIsRevealed(true);
-        completeScratch();
         audio.playCollect();
         confetti({
           particleCount: 85,
