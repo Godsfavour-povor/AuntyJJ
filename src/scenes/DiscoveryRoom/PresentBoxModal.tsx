@@ -256,12 +256,20 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
               backgroundColor: getCardBg(present.boxColor),
             }}
           >
-            {/* Custom Photo Frame: wide, boosted height & width, photo clean inside */}
-            <div className="w-full flex-1 min-h-0 h-[48dvh] sm:h-[54dvh] max-h-[48dvh] sm:max-h-[500px] rounded-xl sm:rounded-2xl border-[3px] sm:border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/60 shadow-inner flex items-center justify-center p-1 sm:p-1.5 mb-1.5">
+            {/* Custom Photo Frame: Head guaranteed to show, brought down slightly from top border */}
+            <div className="w-full flex-1 min-h-0 h-[48dvh] sm:h-[54dvh] max-h-[48dvh] sm:max-h-[500px] rounded-xl sm:rounded-2xl border-[3px] sm:border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/70 shadow-inner flex items-center justify-center p-2 pt-3 sm:p-3 sm:pt-4 mb-1.5 relative">
               <img
                 src={photoUrl}
                 alt={present.title}
-                className="w-full h-full object-contain block rounded-lg sm:rounded-xl"
+                className="block rounded-lg sm:rounded-xl shadow-sm"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  width: 'auto',
+                  height: 'auto',
+                  objectFit: 'contain',
+                  objectPosition: 'center top',
+                }}
               />
             </div>
 

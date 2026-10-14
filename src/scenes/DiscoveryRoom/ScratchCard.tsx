@@ -26,8 +26,10 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
 
   // Paint festive pastel confetti scratch overlay
   const paintOverlay = useCallback((canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     const w = canvas.width;
     const h = canvas.height;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     ctx.globalCompositeOperation = 'source-over';
 
@@ -47,30 +49,30 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
       const rx = (Math.sin(i * 123) * 0.5 + 0.5) * w;
       const ry = (Math.cos(i * 321) * 0.5 + 0.5) * h;
       ctx.beginPath();
-      ctx.arc(rx, ry, (i % 4) + 3, 0, Math.PI * 2);
+      ctx.arc(rx, ry, ((i % 4) + 3) * dpr, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // Center Stamp Callout
     ctx.save();
-    const badgeW = Math.min(w * 0.85, 360);
-    const badgeH = 54;
+    const badgeW = Math.min(w * 0.85, 360 * dpr);
+    const badgeH = 54 * dpr;
     const badgeX = (w - badgeW) / 2;
     const badgeY = (h - badgeH) / 2;
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
     ctx.strokeStyle = '#1E1B4B';
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 3.5 * dpr;
     ctx.beginPath();
     if (typeof (ctx as unknown as { roundRect?: (...args: number[]) => void }).roundRect === 'function') {
-      (ctx as unknown as { roundRect: (...args: number[]) => void }).roundRect(badgeX, badgeY, badgeW, badgeH, 27);
+      (ctx as unknown as { roundRect: (...args: number[]) => void }).roundRect(badgeX, badgeY, badgeW, badgeH, 27 * dpr);
     } else {
       ctx.rect(badgeX, badgeY, badgeW, badgeH);
     }
     ctx.fill();
     ctx.stroke();
 
-    ctx.font = 'bold 16px "Fredoka", sans-serif';
+    ctx.font = `bold ${Math.round(15 * dpr)}px "Fredoka", sans-serif`;
     ctx.fillStyle = '#1E1B4B';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -125,22 +127,22 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     const percentage = Math.round((transparentCount / totalSamples) * 100);
     setScratchProgress(percentage);
 
-    if (percentage >= 48 && !isCompleted) {
+    if (percentage >= 45 && !isCompleted) {
       triggerDissolve();
     }
   }, [isCompleted, triggerDissolve]);
 
-  // Stroke erasure interpolation
-  const eraseStroke = useCallback((x0: number, y0: number, x1: number, y1: number) => {
+  // Stroke erasure interpolation (operates purely in pixel buffer coordinates with identity transform)
+  const eraseStroke = useCallback((x0: number, y0: number, x1: number, y1: number, radius: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'destination-out';
-    const radius = 30; // Brush radius
     const dist = Math.hypot(x1 - x0, y1 - y0);
-    const step = Math.max(1, radius * 0.4);
+    const step = Math.max(1, radius * 0.35);
 
     for (let i = 0; i < dist; i += step) {
       const t = i / dist;
@@ -157,6 +159,19 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     ctx.fill();
   }, []);
 
+  // Helper to get exact canvas bitmap coordinates from any pointer event
+  const getCanvasCoords = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0, radius: 30 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / (rect.width || 1);
+    const scaleY = canvas.height / (rect.height || 1);
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    const radius = 32 * scaleX;
+    return { x, y, radius };
+  }, []);
+
   // Initialize Canvas & keep size in sync with container
   useEffect(() => {
     const container = containerRef.current;
@@ -168,14 +183,13 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
       if (rect.width === 0 || rect.height === 0) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
       canvas.style.width = `${rect.width}px`;
       canvas.style.height = `${rect.height}px`;
 
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (ctx) {
-        ctx.scale(dpr, dpr);
         paintOverlay(canvas, ctx);
       }
     };
@@ -198,15 +212,15 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     if (!canvas) return;
 
     isDrawingRef.current = true;
-    canvas.setPointerCapture(e.pointerId);
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer capture is unavailable
+    }
 
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const x = (e.clientX - rect.left) * dpr;
-    const y = (e.clientY - rect.top) * dpr;
-
+    const { x, y, radius } = getCanvasCoords(e);
     lastPointRef.current = { x, y };
-    eraseStroke(x, y, x, y);
+    eraseStroke(x, y, x, y, radius);
     audio.playScratchChime();
   };
 
@@ -215,23 +229,21 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const currentX = (e.clientX - rect.left) * dpr;
-    const currentY = (e.clientY - rect.top) * dpr;
+    const { x: currentX, y: currentY, radius } = getCanvasCoords(e);
 
     if (lastPointRef.current) {
       eraseStroke(
         lastPointRef.current.x,
         lastPointRef.current.y,
         currentX,
-        currentY
+        currentY,
+        radius
       );
     }
 
     lastPointRef.current = { x: currentX, y: currentY };
 
-    if (Math.random() < 0.2) {
+    if (Math.random() < 0.22) {
       audio.playScratchChime();
     }
   };
@@ -241,8 +253,14 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     isDrawingRef.current = false;
     lastPointRef.current = null;
     const canvas = canvasRef.current;
-    if (canvas && canvas.hasPointerCapture(e.pointerId)) {
-      canvas.releasePointerCapture(e.pointerId);
+    if (canvas) {
+      try {
+        if (canvas.hasPointerCapture(e.pointerId)) {
+          canvas.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // Ignore
+      }
     }
     checkScratchPercentage();
   };
@@ -270,7 +288,7 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
             className="absolute inset-0 w-full h-full touch-none cursor-pointer rounded-[inherit]"
-            style={{ zIndex: 20 }}
+            style={{ zIndex: 20, touchAction: 'none' }}
           />
         )}
       </div>
