@@ -138,7 +138,7 @@ export const FoldingLetter: React.FC<FoldingLetterProps> = ({ isOpen, onOpen }) 
           </div>
 
           {celebrationFired && (
-            <p className="text-center text-xs font-display font-bold text-turquoise-dark mt-4 animate-bounce">
+            <p className="text-center text-xs font-display font-bold text-turquoise-dark mt-4 animate-fade-in">
               🌟 Here&apos;s to your happiest, brightest, and most blessed year yet! 🌟
             </p>
           )}

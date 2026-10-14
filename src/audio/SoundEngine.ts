@@ -32,14 +32,14 @@ class SoundEngine {
         this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
         this.masterGain.connect(this.ctx.destination);
 
-        // Music Sub-Bus
+        // Music Sub-Bus (Boosted volume for fun, rich celebration sound)
         this.musicGain = this.ctx.createGain();
-        this.musicGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        this.musicGain.gain.setValueAtTime(0.22, this.ctx.currentTime);
         this.musicGain.connect(this.masterGain);
 
         // SFX Sub-Bus
         this.sfxGain = this.ctx.createGain();
-        this.sfxGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        this.sfxGain.gain.setValueAtTime(0.38, this.ctx.currentTime);
         this.sfxGain.connect(this.masterGain);
       }
     }
@@ -72,13 +72,13 @@ class SoundEngine {
     this.currentScene = scene;
     if (this.ctx && this.musicGain) {
       const now = this.ctx.currentTime;
-      // Smooth dynamic volume balance per scene
+      // Rich celebratory volume balance per scene
       if (scene === 'scene_2_party') {
-        this.musicGain.gain.linearRampToValueAtTime(0.075, now + 0.5);
+        this.musicGain.gain.linearRampToValueAtTime(0.20, now + 0.5);
       } else if (scene === 'scene_3_discovery') {
-        this.musicGain.gain.linearRampToValueAtTime(0.085, now + 0.5);
+        this.musicGain.gain.linearRampToValueAtTime(0.24, now + 0.5);
       } else if (scene === 'scene_4_finale') {
-        this.musicGain.gain.linearRampToValueAtTime(0.1, now + 0.5);
+        this.musicGain.gain.linearRampToValueAtTime(0.26, now + 0.5);
       }
     }
   }
@@ -93,7 +93,7 @@ class SoundEngine {
     const now = this.ctx.currentTime;
     this.musicGain.gain.cancelScheduledValues(now);
     this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
-    this.musicGain.gain.linearRampToValueAtTime(duck ? 0.02 : 0.08, now + 0.4);
+    this.musicGain.gain.linearRampToValueAtTime(duck ? 0.05 : 0.22, now + 0.4);
   }
 
   // --- CONTINUOUS PROCEDURAL SOUNDTRACK ---
@@ -183,12 +183,22 @@ class SoundEngine {
     const noteIndex = this.noteStep % this.happyBirthdayNotes.length;
     const currentNote = this.happyBirthdayNotes[noteIndex];
 
-    // Trigger Felt Piano melody note
+    // 1. Felt Piano Lead
     this.triggerPianoNote(currentNote.f, currentNote.d);
 
-    // Warm pizzicato / acoustic bass on phrase anchors
+    // 2. Glockenspiel Bell Sparkle (1 octave above)
+    this.triggerGlockenspielNote(currentNote.f * 2, currentNote.d * 0.8);
+
+    // 3. Warm Acoustic Bass / Cello on harmonic roots
     if (currentNote.bassFreq) {
-      this.triggerPizzicatoNote(currentNote.bassFreq, currentNote.d * 1.2);
+      this.triggerPizzicatoNote(currentNote.bassFreq, currentNote.d * 1.3);
+      // Soft waltz percussion beat
+      this.triggerWoodblockTap();
+    }
+
+    // 4. Cheerful Ukulele / Guitar chord strum on upbeat
+    if (this.noteStep % 2 === 1) {
+      this.triggerUkuleleStrum([349.23, 440.00, 523.25]); // F Major chord triad
     }
 
     this.noteStep++;
@@ -220,7 +230,7 @@ class SoundEngine {
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.18, now + 0.015); // Fast piano hammer attack
+      gain.gain.linearRampToValueAtTime(0.24, now + 0.015); // Fast piano hammer attack
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
@@ -234,8 +244,8 @@ class SoundEngine {
     } catch {}
   }
 
-  // Synthesize playful pizzicato pluck
-  private triggerPizzicatoNote(freq: number, duration: number) {
+  // Synthesize sparkling glockenspiel bell
+  private triggerGlockenspielNote(freq: number, duration: number) {
     if (!this.ctx || !this.musicGain) return;
     try {
       const now = this.ctx.currentTime;
@@ -244,7 +254,29 @@ class SoundEngine {
       osc.frequency.setValueAtTime(freq, now);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.7);
+
+      osc.connect(gain);
+      gain.connect(this.musicGain);
+
+      osc.start(now);
+      osc.stop(now + duration * 0.7);
+    } catch {}
+  }
+
+  // Synthesize playful pizzicato bass pluck
+  private triggerPizzicatoNote(freq: number, duration: number) {
+    if (!this.ctx || !this.musicGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.22, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
@@ -252,6 +284,52 @@ class SoundEngine {
 
       osc.start(now);
       osc.stop(now + duration);
+    } catch {}
+  }
+
+  // Synthesize cheerful acoustic ukulele / guitar strum
+  private triggerUkuleleStrum(chordFreqs: number[]) {
+    if (!this.ctx || !this.musicGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      chordFreqs.forEach((freq, idx) => {
+        const strumOffset = idx * 0.018; // Micro-delay between strings
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + strumOffset);
+
+        const gain = this.ctx!.createGain();
+        gain.gain.setValueAtTime(0.09, now + strumOffset);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + strumOffset + 0.28);
+
+        osc.connect(gain);
+        gain.connect(this.musicGain!);
+
+        osc.start(now + strumOffset);
+        osc.stop(now + strumOffset + 0.3);
+      });
+    } catch {}
+  }
+
+  // Synthesize soft woodblock / percussion tap
+  private triggerWoodblockTap() {
+    if (!this.ctx || !this.musicGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(820, now);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.04);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+      osc.connect(gain);
+      gain.connect(this.musicGain);
+
+      osc.start(now);
+      osc.stop(now + 0.05);
     } catch {}
   }
 

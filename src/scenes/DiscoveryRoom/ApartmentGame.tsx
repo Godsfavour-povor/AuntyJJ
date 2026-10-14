@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mail, Crown, Sparkles, ArrowRight, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Tv, Lightbulb, Flower2 } from 'lucide-react';
+import { Mail, Crown, ArrowRight, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Tv, Lightbulb, Flower2 } from 'lucide-react';
 import { useAdventure } from '../../context/AdventureContext';
 import { useAudio } from '../../audio/useAudio';
-import { BIRTHDAY_DATA } from '../../config/birthdayData';
 import { PipCharacter } from '../../components/Character/PipCharacter';
-import { ScratchCard } from './ScratchCard';
+import { CinematicEnvelopeModal, type EnvelopeData } from './CinematicEnvelopeModal';
+import { FinalScratchModal } from './FinalScratchModal';
 
 interface TableTarget {
   id: string;
@@ -12,23 +12,14 @@ interface TableTarget {
   name: string;
   x: number; // in virtual pixels (0 - 800)
   y: number; // in virtual pixels (0 - 500)
-  type: 'envelope' | 'scratch';
-  envelopeData?: {
-    title: string;
-    badge: string;
-    subtitle: string;
-    message: string;
-    pipRemark: string;
-    accentColor: string;
-  };
+  type: 'envelope' | 'final_surprise';
+  envelopeData?: EnvelopeData;
 }
 
 export const ApartmentGame: React.FC = () => {
   const {
     scratchCompleted,
-    completeScratch,
     characterMood,
-    setCharacterMood,
     goToScene,
   } = useAdventure();
 
@@ -42,10 +33,10 @@ export const ApartmentGame: React.FC = () => {
 
   // Unlocked / opened envelope IDs
   const [openedEnvelopes, setOpenedEnvelopes] = useState<string[]>([]);
-  const [activeEnvelope, setActiveEnvelope] = useState<TableTarget | null>(null);
-  const [scratchModalOpen, setScratchModalOpen] = useState<boolean>(false);
+  const [activeEnvelope, setActiveEnvelope] = useState<EnvelopeData | null>(null);
+  const [finalModalOpen, setFinalModalOpen] = useState<boolean>(false);
 
-  // Active nearby target for proximity action button
+  // Active nearby target (ONLY active when Pip is standing right next to the table)
   const [nearbyTarget, setNearbyTarget] = useState<TableTarget | null>(null);
 
   // Interactive ambient toys
@@ -53,8 +44,8 @@ export const ApartmentGame: React.FC = () => {
   const [lampOn, setLampOn] = useState<boolean>(false);
   const [flowersWatered, setFlowersWatered] = useState<boolean>(false);
 
-  // Room transition banner notification
-  const [roomNotification, setRoomNotification] = useState<string>('Parlor (Living Room)');
+  // Room indicator
+  const [roomNotification, setRoomNotification] = useState<string>('Living Room 🛋️');
   const lastRoomRef = useRef<string>('parlor');
 
   // Virtual Joystick Touch Tracking
@@ -77,6 +68,8 @@ export const ApartmentGame: React.FC = () => {
       y: 260,
       type: 'envelope',
       envelopeData: {
+        id: 'env-bedroom',
+        roomName: 'The Keepsake Bedroom',
         title: 'The Ultimate Sister Trophy',
         badge: 'Family Record Holder 🏆',
         subtitle: 'Official Award for Patience & Wisdom',
@@ -94,6 +87,8 @@ export const ApartmentGame: React.FC = () => {
       y: 310,
       type: 'envelope',
       envelopeData: {
+        id: 'env-dining',
+        roomName: 'The Sunshine Balcony',
         title: 'The Laughter Specialist',
         badge: 'Pure Sunshine ☀️',
         subtitle: 'Contagious Chuckles Certified',
@@ -111,6 +106,8 @@ export const ApartmentGame: React.FC = () => {
       y: 420,
       type: 'envelope',
       envelopeData: {
+        id: 'env-parlor',
+        roomName: 'The Sibling Den',
         title: 'The Sibling Compass',
         badge: 'Endless Guidance 🧭',
         subtitle: 'Wisdom You Can Always Count On',
@@ -121,37 +118,33 @@ export const ApartmentGame: React.FC = () => {
       },
     },
     {
-      id: 'royal-decree',
-      roomName: 'Royal Secret Chamber',
-      name: 'Royal Mystery Table',
+      id: 'final-surprise',
+      roomName: 'The Secret Chamber',
+      name: 'Final Birthday Surprise',
       x: 400,
       y: 100,
-      type: 'scratch',
+      type: 'final_surprise',
     },
   ];
 
   const allEnvelopesFound = openedEnvelopes.length >= 3;
 
-  // Room Wall Boundaries & Doorways Collision Checker (Virtual 800 x 500 space)
+  // Collision Boundaries
   const isWalkable = useCallback((newX: number, newY: number) => {
-    // Outer boundaries
+    // Outer walls
     if (newX < 55 || newX > 745 || newY < 45 || newY > 465) return false;
 
-    // Outer wall dividing North Royal Chamber (Y: 20-160) from Center Parlor (Y: 160-470)
-    // Wall runs at Y: 160 from X: 50 to 800, Doorway at X: 350 - 450
+    // Outer wall dividing North Secret Chamber (Y: 20-160) from Center Parlor (Y: 160-470)
     if (newY <= 165) {
-      // Must be through doorway
       if (newX < 350 || newX > 450) return false;
-      // Lock door if 3 envelopes not found yet
+      // Velvet ribbon lock until all 3 envelopes are opened
       if (!allEnvelopesFound && newY < 155) return false;
     }
 
-    // Vertical wall dividing Bedroom (X: 50-250) from Parlor (X: 250-550)
-    // Doorway at Y: 270 - 370
+    // Vertical wall dividing Bedroom from Parlor (X: 250, Doorway at Y: 270-370)
     if (newX <= 255 && newX >= 245 && (newY < 270 || newY > 370)) return false;
 
-    // Vertical wall dividing Parlor (X: 250-550) from Dining Balcony (X: 550-750)
-    // Doorway at Y: 270 - 370
+    // Vertical wall dividing Parlor from Balcony (X: 550, Doorway at Y: 270-370)
     if (newX >= 545 && newX <= 555 && (newY < 270 || newY > 370)) return false;
 
     // Obstacle: Center Parlor Coffee Table
@@ -166,10 +159,10 @@ export const ApartmentGame: React.FC = () => {
       keysDownRef.current[e.key.toLowerCase()] = true;
       setWalkTarget(null);
 
-      // Space or Enter opens nearby envelope
+      // Space or Enter triggers nearby target
       if ((e.key === ' ' || e.key === 'Enter') && nearbyTarget) {
         e.preventDefault();
-        triggerTargetAction(nearbyTarget);
+        triggerProximityAction();
       }
     };
 
@@ -185,17 +178,16 @@ export const ApartmentGame: React.FC = () => {
     };
   });
 
-  // Action trigger for nearby target
-  const triggerTargetAction = (target: TableTarget) => {
-    audio.playCollect();
-    setCharacterMood('celebrating');
+  // Proximity Action Trigger (ONLY works when Pip is nearby)
+  const triggerProximityAction = () => {
+    if (!nearbyTarget) return;
 
-    if (target.type === 'scratch') {
-      setScratchModalOpen(true);
-    } else {
-      setActiveEnvelope(target);
-      if (!openedEnvelopes.includes(target.id)) {
-        setOpenedEnvelopes((prev) => [...prev, target.id]);
+    if (nearbyTarget.type === 'final_surprise') {
+      setFinalModalOpen(true);
+    } else if (nearbyTarget.envelopeData) {
+      setActiveEnvelope(nearbyTarget.envelopeData);
+      if (!openedEnvelopes.includes(nearbyTarget.id)) {
+        setOpenedEnvelopes((prev) => [...prev, nearbyTarget.id]);
       }
     }
   };
@@ -235,22 +227,20 @@ export const ApartmentGame: React.FC = () => {
         }
       }
 
-      // Normalize movement speed
+      // Movement application
       const mag = Math.hypot(dx, dy);
       if (mag > 0.1) {
         setIsWalking(true);
-        const speed = 3.8; // px per frame
+        const speed = 3.6;
         const moveX = (dx / mag) * speed;
         const moveY = (dy / mag) * speed;
 
-        // Facing direction
         if (Math.abs(dx) > Math.abs(dy)) {
           setFacing(dx < 0 ? 'left' : 'right');
         } else {
           setFacing(dy < 0 ? 'up' : 'down');
         }
 
-        // Footstep audio cadence
         if (timestamp - lastStepTimeRef.current > 180) {
           audio.playFootstep();
           lastStepTimeRef.current = timestamp;
@@ -260,7 +250,6 @@ export const ApartmentGame: React.FC = () => {
           let nextX = prev.x;
           let nextY = prev.y;
 
-          // Axis sliding physics
           if (isWalkable(prev.x + moveX, prev.y)) {
             nextX = prev.x + moveX;
           }
@@ -273,29 +262,29 @@ export const ApartmentGame: React.FC = () => {
         setIsWalking(false);
       }
 
-      // Check proximity to all tables (within 60px)
+      // Check proximity (strictly <= 58px)
       let foundNearby: TableTarget | null = null;
       for (const t of tables) {
         const dist = Math.hypot(t.x - pipPos.x, t.y - pipPos.y);
-        if (dist < 60) {
+        if (dist <= 58) {
           foundNearby = t;
           break;
         }
       }
       setNearbyTarget(foundNearby);
 
-      // Track current room for UI banner
+      // Track current room
       let currentRoomCode = 'parlor';
-      let currentRoomTitle = 'Parlor (Living Room) 🛋️';
+      let currentRoomTitle = 'Living Room 🛋️';
       if (pipPos.y < 160) {
         currentRoomCode = 'royal';
-        currentRoomTitle = 'Royal Secret Chamber 👑';
+        currentRoomTitle = 'The Secret Chamber 👑';
       } else if (pipPos.x < 250) {
         currentRoomCode = 'bedroom';
-        currentRoomTitle = 'Keepsake Bedroom 🛏️';
+        currentRoomTitle = 'The Keepsake Bedroom 🛏️';
       } else if (pipPos.x > 550) {
         currentRoomCode = 'balcony';
-        currentRoomTitle = 'Sunshine Balcony ☀️';
+        currentRoomTitle = 'The Sunshine Balcony ☀️';
       }
 
       if (currentRoomCode !== lastRoomRef.current) {
@@ -384,17 +373,17 @@ export const ApartmentGame: React.FC = () => {
 
   return (
     <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center select-none">
-      {/* Top HUD Bar: Room Banner & Envelope Counter */}
-      <div className="w-full flex items-center justify-between px-3.5 py-1.5 mb-2 bg-white/95 border-2 border-deep-ink rounded-2xl shadow-[3px_3px_0px_#1E1B4B]">
+      {/* Top HUD Bar: Room Banner & Envelope Counter (Clean, no nag text) */}
+      <div className="w-full flex items-center justify-between px-4 py-2 mb-2 bg-white/95 border-2 border-deep-ink rounded-2xl shadow-[3px_3px_0px_#1E1B4B]">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-turquoise animate-pulse" />
+          <span className="w-2.5 h-2.5 rounded-full bg-turquoise" />
           <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
             {roomNotification}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
-          <Mail className="w-3.5 h-3.5 text-coral" />
+          <Mail className="w-4 h-4 text-coral" />
           <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
             Envelopes: {openedEnvelopes.length}/3 Unlocked
           </span>
@@ -413,7 +402,7 @@ export const ApartmentGame: React.FC = () => {
           className="absolute inset-0 w-full h-full pointer-events-none"
         >
           {/* Room Floors */}
-          {/* North Royal Chamber (Royal Lavender Carpet) */}
+          {/* North Secret Chamber (Royal Lavender Carpet) */}
           <rect x="250" y="20" width="300" height="140" fill="#EDE9FE" />
           <path d="M 370,160 L 370,30 L 430,30 L 430,160 Z" fill="#F43F5E" opacity="0.3" />
 
@@ -459,7 +448,7 @@ export const ApartmentGame: React.FC = () => {
 
           {/* Golden Ribbon Lock across North Chamber Doorway (if envelopes not all found) */}
           {!allEnvelopesFound && (
-            <g className="animate-pulse">
+            <g>
               <line x1="350" y1="160" x2="450" y2="160" stroke="#F59E0B" strokeWidth="5" strokeDasharray="6 4" />
               <circle cx="400" cy="160" r="10" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2" />
               <text x="400" y="164" fontSize="10" textAnchor="middle" fill="#1E1B4B">🔒</text>
@@ -470,7 +459,7 @@ export const ApartmentGame: React.FC = () => {
           <rect x="360" y="16" width="80" height="8" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2" />
         </svg>
 
-        {/* Ambient Interactive Objects (Toys) */}
+        {/* Ambient Interactive Objects (TV, Lamp, Flowers) */}
         {/* 1. Parlor TV Console */}
         <div
           onClick={(e) => {
@@ -478,9 +467,9 @@ export const ApartmentGame: React.FC = () => {
             setTvOn((prev) => !prev);
             audio.playPop();
           }}
-          className="absolute top-[175px] left-[380px] z-20 flex flex-col items-center cursor-pointer group"
+          className="absolute top-[175px] left-[380px] z-20 flex flex-col items-center cursor-pointer"
         >
-          <div className={`p-1 rounded border-2 border-deep-ink transition-colors ${tvOn ? 'bg-turquoise animate-pulse' : 'bg-white'}`}>
+          <div className={`p-1 rounded border-2 border-deep-ink transition-colors ${tvOn ? 'bg-turquoise' : 'bg-white'}`}>
             <Tv className="w-4 h-4 text-deep-ink" />
           </div>
           <span className="text-[8px] font-bold text-deep-ink/70">TV</span>
@@ -493,7 +482,7 @@ export const ApartmentGame: React.FC = () => {
             setLampOn((prev) => !prev);
             audio.playPop();
           }}
-          className="absolute top-[175px] left-[180px] z-20 flex flex-col items-center cursor-pointer group"
+          className="absolute top-[175px] left-[180px] z-20 flex flex-col items-center cursor-pointer"
         >
           <div className={`p-1 rounded-full border-2 border-deep-ink transition-colors ${lampOn ? 'bg-yellow shadow-[0_0_12px_#FDE047]' : 'bg-white'}`}>
             <Lightbulb className="w-4 h-4 text-deep-ink" />
@@ -508,9 +497,9 @@ export const ApartmentGame: React.FC = () => {
             setFlowersWatered(true);
             audio.playCollect();
           }}
-          className="absolute top-[175px] left-[680px] z-20 flex flex-col items-center cursor-pointer group"
+          className="absolute top-[175px] left-[680px] z-20 flex flex-col items-center cursor-pointer"
         >
-          <div className={`p-1 rounded-full border-2 border-deep-ink transition-transform ${flowersWatered ? 'scale-125 bg-coral text-white' : 'bg-white text-coral'}`}>
+          <div className={`p-1 rounded-full border-2 border-deep-ink transition-transform ${flowersWatered ? 'scale-110 bg-coral text-white' : 'bg-white text-coral'}`}>
             <Flower2 className="w-4 h-4" />
           </div>
           <span className="text-[8px] font-bold text-deep-ink/70">Flowers</span>
@@ -519,7 +508,7 @@ export const ApartmentGame: React.FC = () => {
         {/* Waypoint Click Beacon */}
         {walkTarget && (
           <div
-            className="absolute z-10 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-coral bg-coral/20 pointer-events-none animate-ping"
+            className="absolute z-10 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-coral bg-coral/20 pointer-events-none"
             style={{
               left: `${(walkTarget.x / 800) * 100}%`,
               top: `${(walkTarget.y / 500) * 100}%`,
@@ -527,7 +516,7 @@ export const ApartmentGame: React.FC = () => {
           />
         )}
 
-        {/* 4 Interactive Tables & Envelopes */}
+        {/* 4 Interactive Tables & Envelopes (Proximity-Gated Only!) */}
         {tables.map((t) => {
           const isOpened = openedEnvelopes.includes(t.id);
           const isNearby = nearbyTarget?.id === t.id;
@@ -535,34 +524,30 @@ export const ApartmentGame: React.FC = () => {
           return (
             <div
               key={t.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                triggerTargetAction(t);
-              }}
-              className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+              className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{
                 left: `${(t.x / 800) * 100}%`,
                 top: `${(t.y / 500) * 100}%`,
               }}
             >
-              {/* Exclamation badge when Pip is nearby */}
+              {/* Proximity prompt badge (ONLY visible when Pip is standing right beside table) */}
               {isNearby && (
-                <div className="absolute -top-7 animate-bounce px-2 py-0.5 rounded-full bg-coral text-white text-[10px] font-display font-bold uppercase tracking-wider shadow-sm z-30">
+                <div className="absolute -top-7 px-2 py-0.5 rounded-full bg-coral text-white text-[10px] font-display font-bold uppercase tracking-wider shadow-sm z-30">
                   Inspect! 💬
                 </div>
               )}
 
               {/* Table Object Icon */}
               <div
-                className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl border-2 border-deep-ink shadow-[2px_2px_0px_#1E1B4B] flex items-center justify-center transition-all group-hover:scale-110 ${
-                  t.type === 'scratch'
+                className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl border-2 border-deep-ink shadow-[2px_2px_0px_#1E1B4B] flex items-center justify-center transition-all ${
+                  t.type === 'final_surprise'
                     ? 'bg-gradient-to-r from-coral to-yellow'
                     : isOpened
                     ? 'bg-yellow/80 ring-2 ring-turquoise'
-                    : 'bg-white animate-bounce'
+                    : 'bg-white'
                 }`}
               >
-                {t.type === 'scratch' ? (
+                {t.type === 'final_surprise' ? (
                   <Crown className="w-5 h-5 text-deep-ink" />
                 ) : (
                   <Mail className="w-5 h-5 text-coral" />
@@ -578,7 +563,7 @@ export const ApartmentGame: React.FC = () => {
 
               {/* Table Label */}
               <div className="mt-1 px-2 py-0.5 rounded-full bg-white/95 border border-deep-ink text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-wider text-deep-ink shadow-sm whitespace-nowrap">
-                {t.type === 'scratch' ? 'Royal Decree ✨' : t.name}
+                {t.name}
               </div>
             </div>
           );
@@ -587,7 +572,7 @@ export const ApartmentGame: React.FC = () => {
         {/* Pip The Mascot Moving In Apartment */}
         <div
           className={`absolute z-30 pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ${
-            isWalking ? 'animate-bounce' : ''
+            isWalking ? 'scale-105' : ''
           }`}
           style={{
             left: `${(pipPos.x / 800) * 100}%`,
@@ -618,25 +603,20 @@ export const ApartmentGame: React.FC = () => {
 
         {/* On-Screen Proximity Action Button (Bottom Right) */}
         <div className="absolute bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-          {nearbyTarget ? (
+          {nearbyTarget && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                triggerTargetAction(nearbyTarget);
+                triggerProximityAction();
               }}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all animate-bounce"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 fill-current" />
               <span>
-                {nearbyTarget.type === 'scratch'
-                  ? '👑 Scratch Royal Decree!'
-                  : '✉️ Open Birthday Envelope!'}
+                {nearbyTarget.type === 'final_surprise'
+                  ? '👑 Open Final Surprise!'
+                  : '✉️ Open Envelope!'}
               </span>
             </button>
-          ) : (
-            <div className="px-3.5 py-1.5 rounded-xl bg-white/85 border border-deep-ink text-[11px] font-sans font-semibold text-deep-ink/70">
-              🕹️ Move Joystick or Tap Floor
-            </div>
           )}
 
           {/* Quick D-Pad Stepping Buttons (For Phone Ergonomics) */}
@@ -678,20 +658,12 @@ export const ApartmentGame: React.FC = () => {
         </div>
       </div>
 
-      {/* Guide Banner Under Map */}
-      <div className="w-full mt-2.5 flex flex-col sm:flex-row items-center justify-between gap-2 px-2 text-xs">
-        <div className="flex items-center gap-1.5 font-sans font-semibold text-deep-ink/80">
-          <span>
-            {allEnvelopesFound
-              ? '🌟 All secret envelopes found! Head to the North Royal Chamber for the Scratch Decree!'
-              : '🧭 Explore each room to find hidden envelopes on tables!'}
-          </span>
-        </div>
-
+      {/* Guide Banner Under Map (Only when final surprise completed) */}
+      <div className="w-full mt-2.5 flex items-center justify-end px-2 text-xs">
         {scratchCompleted && (
           <button
             onClick={() => goToScene('scene_4_finale')}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all animate-pulse"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
           >
             <span>Proceed to Finale! 🎈</span>
             <ArrowRight className="w-4 h-4" />
@@ -699,129 +671,19 @@ export const ApartmentGame: React.FC = () => {
         )}
       </div>
 
-      {/* Opened Envelope Modal */}
-      {activeEnvelope && activeEnvelope.envelopeData && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-ink/65 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setActiveEnvelope(null)}
-        >
-          <div
-            className="relative w-full max-w-lg bg-cream border-[3px] border-deep-ink rounded-3xl p-6 sm:p-8 shadow-[8px_8px_0px_#1E1B4B] animate-comic-pop"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setActiveEnvelope(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-white border-2 border-deep-ink hover:bg-coral hover:text-white transition-all shadow-[2px_2px_0px_#1E1B4B]"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {/* Envelope Content */}
-            <div className="text-center space-y-3">
-              <span
-                className="inline-block px-3 py-1 rounded-full text-deep-ink border border-deep-ink text-xs font-display font-bold uppercase tracking-wider"
-                style={{ backgroundColor: activeEnvelope.envelopeData.accentColor }}
-              >
-                {activeEnvelope.envelopeData.badge}
-              </span>
-
-              <h2 className="text-2xl sm:text-3xl font-display font-bold text-deep-ink">
-                {activeEnvelope.envelopeData.title}
-              </h2>
-
-              <p className="text-xs uppercase font-sans font-semibold tracking-wider text-coral">
-                {activeEnvelope.envelopeData.subtitle}
-              </p>
-
-              <div className="w-16 h-1 bg-deep-ink rounded-full mx-auto my-2" />
-
-              <p className="text-sm sm:text-base text-deep-ink/90 font-sans leading-relaxed text-left max-w-md mx-auto">
-                {activeEnvelope.envelopeData.message}
-              </p>
-
-              {/* Pip's Commentary */}
-              <div className="mt-4 p-3 rounded-2xl bg-white border-2 border-deep-ink text-xs sm:text-sm font-sans font-medium text-deep-ink shadow-[2px_2px_0px_#1E1B4B] flex items-center gap-2 text-left">
-                <span className="text-xl">💬</span>
-                <span className="italic">
-                  <strong>Pip says:</strong> &ldquo;{activeEnvelope.envelopeData.pipRemark}&rdquo;
-                </span>
-              </div>
-
-              {/* Close / Keep Exploring CTA */}
-              <button
-                onClick={() => setActiveEnvelope(null)}
-                className="mt-4 px-6 py-2.5 rounded-full bg-turquoise hover:bg-turquoise-dark text-deep-ink hover:text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-              >
-                Keep Exploring Apartment ➔
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Cinematic Multi-Stage Envelope Modal */}
+      {activeEnvelope && (
+        <CinematicEnvelopeModal
+          envelope={activeEnvelope}
+          onClose={() => setActiveEnvelope(null)}
+        />
       )}
 
-      {/* Secret Scratch Card Modal (North Royal Chamber Table) */}
-      {scratchModalOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-deep-ink/65 backdrop-blur-sm animate-fadeIn"
-          onClick={() => setScratchModalOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-lg bg-cream border-[3px] border-deep-ink rounded-3xl p-5 sm:p-7 shadow-[8px_8px_0px_#1E1B4B] animate-comic-pop"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="text-center mb-3">
-              <span className="inline-block px-3 py-1 rounded-full bg-coral text-white text-[11px] font-display font-bold uppercase tracking-wider">
-                👑 Top Secret Proclamation
-              </span>
-              <h2 className="text-xl sm:text-2xl font-display font-bold text-deep-ink mt-1">
-                Rub Foil to Reveal Decree!
-              </h2>
-            </div>
-
-            {/* Tactile Canvas Scratch Card */}
-            <ScratchCard
-              onCompleted={() => {
-                completeScratch();
-                audio.playCollect();
-              }}
-              isCompleted={scratchCompleted}
-            >
-              <div className="w-full h-full flex flex-col justify-between items-center text-center p-3 sm:p-5 bg-gradient-to-b from-[#FEFCE8] to-[#FFFDF8] rounded-2xl border-2 border-deep-ink">
-                <div className="inline-block px-2.5 py-0.5 rounded-full bg-coral text-white text-[10px] font-display font-bold uppercase tracking-wider">
-                  👑 Royal Proclamation
-                </div>
-
-                <h3 className="text-lg sm:text-xl font-display font-bold text-deep-ink">
-                  To {BIRTHDAY_DATA.sisterName}
-                </h3>
-
-                <p className="font-sans font-medium text-xs sm:text-sm text-deep-ink/90 leading-relaxed max-w-sm px-1">
-                  &ldquo;{BIRTHDAY_DATA.scratchSecretMessage}&rdquo;
-                </p>
-
-                <div className="text-[10px] font-sans font-semibold text-deep-ink/60 uppercase tracking-wider">
-                  Certified with love &bull; From {BIRTHDAY_DATA.brotherName}
-                </div>
-              </div>
-            </ScratchCard>
-
-            {/* Close / Return to Apartment Button */}
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={() => setScratchModalOpen(false)}
-                className="px-6 py-2 rounded-full bg-turquoise hover:bg-turquoise-dark text-deep-ink border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
-              >
-                Return to Apartment 🗺️
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Final Surprise Cloud Reveal & Scratch Modal */}
+      {finalModalOpen && (
+        <FinalScratchModal
+          onClose={() => setFinalModalOpen(false)}
+        />
       )}
     </div>
   );

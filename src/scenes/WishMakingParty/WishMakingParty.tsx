@@ -19,49 +19,66 @@ export const WishMakingParty: React.FC = () => {
 
   const audio = useAudio();
 
-  // State: 'idle' -> 'wishing' (prompt active, ready to blow) -> 'blowing' (physical wind/tilt) -> 'blown' (hooray!)
-  const [stage, setStage] = useState<'idle' | 'wishing' | 'blowing' | 'blown'>(
-    wishStage === 'candles_blown' ? 'blown' : 'idle'
-  );
-  const isExtinguishedRef = useRef<boolean>(wishStage === 'candles_blown');
+  // State: 'idle' -> 'wishing' -> 'blown'
+  const [isWishing, setIsWishing] = useState<boolean>(wishStage === 'candles_blown');
+  // 3 individual candle states
+  const [blownCandles, setBlownCandles] = useState<[boolean, boolean, boolean]>([
+    wishStage === 'candles_blown',
+    wishStage === 'candles_blown',
+    wishStage === 'candles_blown',
+  ]);
+  const [isBlowing, setIsBlowing] = useState<boolean>(false);
+  const blowCooldownRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    isExtinguishedRef.current = wishStage === 'candles_blown';
-    if (wishStage === 'candles_blown') {
-      setStage('blown');
-    }
-  }, [wishStage]);
+  const candlesBlownCount = blownCandles.filter(Boolean).length;
+  const allCandlesBlown = candlesBlownCount === 3;
 
-  // Physical blow sequence
-  const executeBlow = useCallback(() => {
-    if (isExtinguishedRef.current) return;
-    isExtinguishedRef.current = true;
+  // Single breath / blow event (extinguishes 1 candle per breath for measured pacing)
+  const handleSingleBlow = useCallback(() => {
+    if (!isWishing || blowCooldownRef.current || allCandlesBlown) return;
+    blowCooldownRef.current = true;
 
-    // 1. Physical blowing wind & flame tilt animation
-    setStage('blowing');
+    // Trigger physical facing wind gust from front
+    setIsBlowing(true);
     audio.playCandleBlow();
 
-    // 2. Extinguish flames after wind breath
     setTimeout(() => {
-      extinguishCandles();
-      setStage('blown');
-      setCharacterMood('celebrating');
-      audio.playPartyHorn();
+      setIsBlowing(false);
 
-      // Confetti burst
-      confetti({
-        particleCount: 80,
-        spread: 80,
-        origin: { y: 0.62 },
-        colors: ['#FB7185', '#38BDF8', '#2DD4BF', '#FDE047', '#C084FC'],
-        disableForReducedMotion: true,
+      setBlownCandles((prev) => {
+        const next: [boolean, boolean, boolean] = [...prev];
+        if (!next[0]) next[0] = true;
+        else if (!next[1]) next[1] = true;
+        else if (!next[2]) next[2] = true;
+
+        const nextCount = next.filter(Boolean).length;
+        if (nextCount === 3) {
+          extinguishCandles();
+          setCharacterMood('celebrating');
+          audio.playPartyHorn();
+
+          // Gentle celebratory confetti
+          confetti({
+            particleCount: 70,
+            spread: 75,
+            origin: { y: 0.65 },
+            colors: ['#FB7185', '#38BDF8', '#2DD4BF', '#FDE047', '#C084FC'],
+            disableForReducedMotion: true,
+          });
+        }
+        return next;
       });
-    }, 400);
-  }, [extinguishCandles, setCharacterMood, audio]);
 
-  // Optional background mic breath listener while in 'wishing' mode
+      // Pacing cooldown: allows sister to catch breath between candles
+      setTimeout(() => {
+        blowCooldownRef.current = false;
+      }, 700);
+    }, 450);
+  }, [isWishing, allCandlesBlown, extinguishCandles, setCharacterMood, audio]);
+
+  // Background microphone air puff detection while in 'wishing' mode
   useEffect(() => {
-    if (stage !== 'wishing') return;
+    if (!isWishing || allCandlesBlown) return;
     let stream: MediaStream | null = null;
     let audioCtx: AudioContext | null = null;
 
@@ -80,16 +97,15 @@ export const WishMakingParty: React.FC = () => {
         const data = new Uint8Array(analyser.frequencyBinCount);
 
         const poll = () => {
-          if (isExtinguishedRef.current) return;
+          if (allCandlesBlown) return;
           analyser.getByteFrequencyData(data);
           let sum = 0;
           for (let i = 0; i < data.length; i++) sum += data[i];
           const avg = sum / data.length;
 
-          // Breath puff threshold
-          if (avg > 40) {
-            executeBlow();
-            return;
+          // Breath sound threshold
+          if (avg > 38 && !blowCooldownRef.current) {
+            handleSingleBlow();
           }
           requestAnimationFrame(poll);
         };
@@ -105,28 +121,19 @@ export const WishMakingParty: React.FC = () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
       if (audioCtx) audioCtx.close().catch(() => {});
     };
-  }, [stage, executeBlow]);
+  }, [isWishing, allCandlesBlown, handleSingleBlow]);
 
-  // Handle "Make a wish" button click
-  const handleMakeWishClick = () => {
-    audio.playPop();
-    setStage('wishing');
+  // Click on "Make a wish"
+  const handleStartWish = () => {
+    setIsWishing(true);
     setCharacterMood('wishing');
     audio.duckMusic(true);
+    audio.playPop();
   };
-
-  const isBlown = stage === 'blown';
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden bg-gradient-to-b from-[#FEF3C7] via-[#FFFDF8] to-[#FDF4FF] select-none">
-      {/* Decorative Floating Party Shapes */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-40">
-        <div className="absolute top-10 left-8 w-14 h-14 rounded-full bg-peach/40 blur-md animate-pulse" />
-        <div className="absolute top-1/3 right-10 w-20 h-20 rounded-full bg-yellow/40 blur-lg animate-pulse" />
-        <div className="absolute bottom-20 left-12 w-16 h-16 rounded-full bg-turquoise/30 blur-md animate-pulse" />
-      </div>
-
-      {/* Top Header (Clean, chapter badge removed per request) */}
+      {/* Top Header (Clean, chapter badge removed) */}
       <header className="relative z-10 text-center max-w-lg mt-12 sm:mt-10 space-y-1">
         <h1 className="text-2xl sm:text-4xl font-display font-bold text-deep-ink tracking-tight">
           Happy Birthday, {BIRTHDAY_DATA.sisterName}!
@@ -134,105 +141,110 @@ export const WishMakingParty: React.FC = () => {
       </header>
 
       {/* Center Cake & Pip Dialogue */}
-      <main className="relative z-10 flex flex-col items-center my-auto w-full max-w-lg space-y-4">
-        {/* Pip's Dynamic Speech Bubble */}
+      <main className="relative z-10 flex flex-col items-center my-auto w-full max-w-2xl space-y-4">
+        {/* Pip's Dialogue */}
         <SpeechBubble tailPosition="bottom-left" className="mb-1 max-w-md">
-          {stage === 'idle' && (
+          {!isWishing && (
             <p className="font-display font-bold text-base sm:text-lg text-deep-ink">
-              Ready for your special birthday cake? Tap below to make your wish! 🎂
+              Look at your 3-tier birthday cake! When you&apos;re ready, tap below to make a wish! 🎂
             </p>
           )}
 
-          {stage === 'wishing' && (
-            <p className="font-display font-bold text-base sm:text-lg text-coral animate-pulse">
-              Close your eyes, make your secret wish... and now BLOW! 🌬️
-            </p>
-          )}
-
-          {stage === 'blowing' && (
+          {isWishing && !allCandlesBlown && (
             <p className="font-display font-bold text-base sm:text-lg text-coral">
-              Blowing out the candles... 🌬️✨
+              {candlesBlownCount === 0 && "Close your eyes, make your silent wish... and blow out your candles! 🌬️"}
+              {candlesBlownCount === 1 && "One candle down! Take another breath and blow again! 🌬️"}
+              {candlesBlownCount === 2 && "Almost there! One last big breath for the final candle! 🌬️✨"}
             </p>
           )}
 
-          {stage === 'blown' && (
-            <p className="font-display font-bold text-base sm:text-lg text-turquoise-dark animate-bounce">
-              🎉 HOORAY! Happy Birthday! Your wish is on its way to the stars!
+          {allCandlesBlown && (
+            <p className="font-display font-bold text-base sm:text-lg text-turquoise-dark">
+              🎉 HOORAY! Happy Birthday! All candles extinguished and your wish is granted!
             </p>
           )}
         </SpeechBubble>
 
-        <div className="relative flex flex-col sm:flex-row items-center justify-center gap-2 w-full">
-          {/* Pip The Mascot */}
-          <div className="sm:absolute sm:left-2 sm:bottom-2 z-20">
-            <PipCharacter mood={isBlown ? 'celebrating' : characterMood} size={110} />
+        {/* Cake Composition with Cloud Blow Indicator on the SIDE */}
+        <div className="relative flex items-center justify-center w-full">
+          {/* Pip The Mascot on Left */}
+          <div className="hidden sm:block absolute left-4 bottom-2 z-20">
+            <PipCharacter mood={characterMood} size={110} />
           </div>
 
-          {/* Birthday Cake */}
+          {/* Redesigned 3-Deck Cake */}
           <div className="z-10 relative">
             <BirthdayCake
-              candlesBlown={isBlown}
-              isBlowing={stage === 'blowing'}
-              onBlowCandles={executeBlow}
+              blownCandles={blownCandles}
+              isBlowing={isBlowing}
+              onBlowCandles={handleSingleBlow}
             />
-
-            {/* Floating indicator: says strictly "Blow" */}
-            {!isBlown && (
-              <div
-                onClick={executeBlow}
-                className="absolute top-2 left-1/2 -translate-x-1/2 cursor-pointer flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-white/95 border-2 border-deep-ink shadow-[2px_2px_0px_#1E1B4B] animate-bounce hover:scale-105 transition-transform"
-              >
-                <Wind className="w-3.5 h-3.5 text-coral animate-pulse" />
-                <span className="text-[12px] font-display font-bold uppercase tracking-wider text-deep-ink">
-                  Blow 🎂
-                </span>
-              </div>
-            )}
           </div>
+
+          {/* Cloud-Shaped Blowing Prompt at the SIDE (Only appears AFTER clicking 'Make a wish') */}
+          {isWishing && !allCandlesBlown && (
+            <div
+              onClick={handleSingleBlow}
+              className="absolute right-2 sm:right-6 top-1/4 z-30 cursor-pointer flex flex-col items-center transition-transform hover:scale-105 active:scale-95"
+            >
+              {/* Cloud SVG Container with pointing tail */}
+              <div className="relative px-5 py-3.5 bg-white border-2 border-deep-ink rounded-[28px] shadow-[4px_4px_0px_#1E1B4B] flex items-center gap-2">
+                <Wind className="w-5 h-5 text-coral animate-pulse" />
+                <div className="text-left">
+                  <div className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
+                    Blow Here! 🌬️
+                  </div>
+                  <div className="text-[10px] font-sans font-medium text-deep-ink/70">
+                    {3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left
+                  </div>
+                </div>
+
+                {/* Cloud Tail Pointing toward the Cake */}
+                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-b-2 border-l-2 border-deep-ink rotate-45" />
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Clean, Seamless Action Area */}
-        <div className="flex items-center justify-center gap-3 w-full max-w-sm pt-2">
-          {stage === 'idle' && (
+        {/* Single Action Button Area */}
+        <div className="flex items-center justify-center w-full max-w-sm pt-2">
+          {!isWishing && (
             <button
-              onClick={handleMakeWishClick}
-              className="px-8 py-3.5 rounded-full bg-yellow hover:bg-yellow-dark text-deep-ink border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+              onClick={handleStartWish}
+              className="px-8 py-3.5 rounded-full bg-yellow hover:bg-yellow-dark text-deep-ink border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
             >
               Make A Wish ✨
             </button>
           )}
 
-          {stage === 'wishing' && (
+          {isWishing && !allCandlesBlown && (
             <button
-              onClick={executeBlow}
-              className="px-8 py-3.5 rounded-full bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] animate-pulse hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
+              onClick={handleSingleBlow}
+              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
             >
-              Blow Candles 🌬️
+              <Wind className="w-4 h-4" />
+              <span>Blow Candle ({3 - candlesBlownCount} Left) 🌬️</span>
             </button>
           )}
 
-          {isBlown && (
+          {allCandlesBlown && (
+            /* Exactly ONE button: Continue */
             <button
               onClick={() => goToScene('scene_3_discovery')}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all animate-bounce"
+              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
             >
-              <span>Explore The Birthday Apartment ➔</span>
+              <span>Continue ➔</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
         </div>
       </main>
 
-      {/* Footer Instructions (Minimal & Clean) */}
+      {/* Clean Footer */}
       <footer className="relative z-10 text-center mb-4">
-        {isBlown && (
-          <button
-            onClick={() => goToScene('scene_3_discovery')}
-            className="text-xs font-sans font-medium text-deep-ink/60 hover:text-deep-ink underline tracking-wider cursor-pointer"
-          >
-            Skip to apartment ➔
-          </button>
-        )}
+        <p className="text-xs font-sans font-medium text-deep-ink/50 tracking-wider">
+          {allCandlesBlown ? 'All candles blown out!' : isWishing ? 'Blow gently into your microphone or tap to extinguish each candle' : ''}
+        </p>
       </footer>
     </div>
   );
