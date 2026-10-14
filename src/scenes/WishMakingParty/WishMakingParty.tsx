@@ -94,8 +94,21 @@ export const WishMakingParty: React.FC = () => {
 
     const startMic = async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) return;
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setMicActive(false);
+          return;
+        }
+
+        // CRITICAL: Disable browser noiseSuppression and echoCancellation, which
+        // aggressively treat human breath/blowing as unwanted background wind noise!
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        });
+
         if (isCancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -106,61 +119,51 @@ export const WishMakingParty: React.FC = () => {
         const analyser = audioCtx.createAnalyser();
         const source = audioCtx.createMediaStreamSource(stream);
 
-        analyser.smoothingTimeConstant = 0.25;
+        analyser.smoothingTimeConstant = 0.2;
         analyser.fftSize = 256;
         source.connect(analyser);
 
         setMicActive(true);
-        const data = new Uint8Array(analyser.frequencyBinCount);
+        const timeData = new Uint8Array(analyser.fftSize);
 
         let calibrationFrames = 0;
         let baselineSum = 0;
-        let baselineNoise = 35; // Default safe baseline
+        let baselineNoise = 4; // Silence default deviation
 
         const poll = () => {
           if (isCancelled || allCandlesBlown) return;
 
-          analyser.getByteFrequencyData(data);
-
-          // 1. Calculate low-frequency wind turbulence energy (bins 1 to 12, ~20Hz-250Hz)
-          let lowFreqSum = 0;
-          for (let i = 1; i <= 12; i++) {
-            lowFreqSum += data[i];
+          // Time-domain displacement: measures direct physical diaphragm excursion
+          analyser.getByteTimeDomainData(timeData);
+          let deviationSum = 0;
+          for (let i = 0; i < timeData.length; i++) {
+            deviationSum += Math.abs(timeData[i] - 128);
           }
-          const lowFreqEnergy = lowFreqSum / 12;
+          const avgDeviation = deviationSum / timeData.length;
 
-          // 2. Calculate broadband volume
-          let totalSum = 0;
-          for (let i = 0; i < 64; i++) {
-            totalSum += data[i];
-          }
-          const totalEnergy = totalSum / 64;
-
-          // 3. Calibration phase (first 50 frames ~800ms to adapt to room noise and mic gain)
-          if (calibrationFrames < 50) {
-            baselineSum += totalEnergy;
+          // Calibration phase: adapts to hardware mic sensitivity in first 35 frames (~500ms)
+          if (calibrationFrames < 35) {
+            baselineSum += avgDeviation;
             calibrationFrames++;
-            if (calibrationFrames === 50) {
-              baselineNoise = Math.max(25, baselineSum / 50);
+            if (calibrationFrames === 35) {
+              baselineNoise = Math.max(3, baselineSum / 35);
             }
             animFrameRef.current = requestAnimationFrame(poll);
             return;
           }
 
-          // 4. Compute reactive breath meter (0 to 100%)
-          const dynamicThreshold = Math.max(85, baselineNoise + 40);
-          const rawRatio = Math.max(0, (totalEnergy - baselineNoise) / (dynamicThreshold - baselineNoise));
-          const visualPercent = Math.min(100, Math.round(rawRatio * 100));
+          // Dynamic breath threshold: sensitive to air puff above ambient room floor
+          const triggerDelta = 14;
+          const dynamicThreshold = baselineNoise + triggerDelta;
+          const visualRatio = Math.max(0, (avgDeviation - baselineNoise) / triggerDelta);
+          const visualPercent = Math.min(100, Math.round(visualRatio * 100));
           setBreathIntensity(visualPercent);
 
-          // 5. Authentic breath signature:
-          // Low frequency air displacement > 95 AND total energy exceeds dynamic threshold
-          const isBreathDetected = lowFreqEnergy > 95 && totalEnergy > dynamicThreshold;
-
-          if (isBreathDetected && !blowCooldownRef.current) {
+          // Detect sustained physical breath
+          if (avgDeviation > dynamicThreshold && !blowCooldownRef.current) {
             blowStreakRef.current += 1;
-            // Require sustained breath over 4 consecutive animation frames (~70ms) to reject quick noises/clicks
-            if (blowStreakRef.current >= 4) {
+            // 2-3 consecutive frames (~40ms) confirms actual breath
+            if (blowStreakRef.current >= 2) {
               handleSingleBlow();
             }
           } else {
@@ -172,7 +175,7 @@ export const WishMakingParty: React.FC = () => {
 
         animFrameRef.current = requestAnimationFrame(poll);
       } catch {
-        // Fallback gracefully to click/tap if mic permission is denied
+        // Fallback gracefully if microphone permission is denied or unsupported
         setMicActive(false);
       }
     };
@@ -250,14 +253,18 @@ export const WishMakingParty: React.FC = () => {
             />
           </div>
 
-          {/* Storybook Inscription (Tells her what to do with real-time breath meter) */}
+          {/* Storybook Inscription (Tells her what to do with real-time breath meter & tap fallback) */}
           {isWishing && !allCandlesBlown && (
-            <div className="absolute -top-12 sm:-top-8 z-30 pointer-events-none flex flex-col items-center animate-fade-in">
-              <div className="px-5 py-2.5 rounded-full bg-white/95 border-2 border-deep-ink shadow-[3px_3px_0px_#1E1B4B] flex items-center gap-3">
+            <div
+              onClick={handleSingleBlow}
+              className="absolute -top-12 sm:-top-8 z-30 flex flex-col items-center animate-fade-in cursor-pointer select-none"
+              title="Blow into your microphone or tap to extinguish!"
+            >
+              <div className="px-5 py-2.5 rounded-full bg-white/95 border-2 border-deep-ink shadow-[3px_3px_0px_#1E1B4B] flex items-center gap-3 hover:scale-105 active:scale-95 transition-transform">
                 <Wind className="w-4 h-4 text-coral animate-pulse" />
                 <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5">
                   <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
-                    Take a deep breath & blow into your mic 🌬️
+                    {micActive ? "Blow into your mic or tap cake 🌬️" : "Blow into your mic or tap cake 🌬️"}
                   </span>
                   <span className="text-[10px] font-sans font-semibold text-coral">
                     ({3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left)
@@ -265,16 +272,20 @@ export const WishMakingParty: React.FC = () => {
                 </div>
 
                 {/* Live Real-Time Breath Meter */}
-                {micActive && (
-                  <div className="flex items-center gap-1.5">
+                {micActive ? (
+                  <div className="flex items-center gap-1.5" title="Live Microphone Breath Sensor">
                     <Mic className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
                     <div className="w-16 sm:w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-deep-ink/20">
                       <div
                         className="h-full bg-gradient-to-r from-sky-400 to-coral transition-all duration-75 rounded-full"
-                        style={{ width: `${breathIntensity}%` }}
+                        style={{ width: `${Math.max(5, breathIntensity)}%` }}
                       />
                     </div>
                   </div>
+                ) : (
+                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Tap Ready ✨
+                  </span>
                 )}
               </div>
             </div>
