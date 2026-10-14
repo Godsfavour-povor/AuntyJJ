@@ -114,9 +114,9 @@ export const WishMakingParty: React.FC = () => {
 
       const initial = initialBetaRef.current ?? 75;
 
-      // Detect tilting top of phone forward towards face to blow
-      const isTiltedForward = (initial > 50 && beta < 45) || (beta - initial < -15) || Math.abs(beta - initial) > 22;
-      const isTiltMotion = Math.abs(deltaBeta) > 14 || angularSpeed > 0.08;
+      // Ultra-responsive tilt detection: any forward tilt towards mouth or flick
+      const isTiltedForward = (initial > 45 && beta < 55) || (beta - initial < -10) || Math.abs(beta - initial) > 18;
+      const isTiltMotion = Math.abs(deltaBeta) > 9 || angularSpeed > 0.045;
 
       if ((isTiltedForward || isTiltMotion) && !blowCooldownRef.current) {
         handleSingleBlow();
@@ -170,21 +170,22 @@ export const WishMakingParty: React.FC = () => {
         const analyser = audioCtx.createAnalyser();
         const source = audioCtx.createMediaStreamSource(stream);
 
-        analyser.smoothingTimeConstant = 0.2;
+        analyser.smoothingTimeConstant = 0.15;
         analyser.fftSize = 256;
         source.connect(analyser);
 
         setMicActive(true);
         const timeData = new Uint8Array(analyser.fftSize);
+        const freqData = new Uint8Array(analyser.frequencyBinCount);
 
         let calibrationFrames = 0;
         let baselineSum = 0;
-        let baselineNoise = 4; // Silence default deviation
+        let baselineNoise = 3;
 
         const poll = () => {
           if (isCancelled || allCandlesBlown) return;
 
-          // Time-domain displacement: measures direct physical diaphragm excursion
+          // 1. Time-domain displacement (diaphragm displacement)
           analyser.getByteTimeDomainData(timeData);
           let deviationSum = 0;
           for (let i = 0; i < timeData.length; i++) {
@@ -192,28 +193,38 @@ export const WishMakingParty: React.FC = () => {
           }
           const avgDeviation = deviationSum / timeData.length;
 
-          // Calibration phase: adapts to hardware mic sensitivity in first 35 frames (~500ms)
-          if (calibrationFrames < 35) {
+          // 2. Frequency spectrum turbulence (breath air puff creates heavy low-frequency energy 40-300Hz)
+          analyser.getByteFrequencyData(freqData);
+          let lowFreqSum = 0;
+          for (let i = 0; i < 6; i++) {
+            lowFreqSum += freqData[i];
+          }
+          const avgLowFreq = lowFreqSum / 6;
+
+          // Calibration phase: adapts to hardware mic sensitivity in first 20 frames (~300ms)
+          if (calibrationFrames < 20) {
             baselineSum += avgDeviation;
             calibrationFrames++;
-            if (calibrationFrames === 35) {
-              baselineNoise = Math.max(3, baselineSum / 35);
+            if (calibrationFrames === 20) {
+              baselineNoise = Math.max(2, baselineSum / 20);
             }
             animFrameRef.current = requestAnimationFrame(poll);
             return;
           }
 
-          // Dynamic breath threshold: sensitive to air puff above ambient room floor
-          const triggerDelta = 14;
+          // Ultra-sensitive breath threshold (even a soft breath puff triggers!)
+          const triggerDelta = 5.0;
           const dynamicThreshold = baselineNoise + triggerDelta;
           const visualRatio = Math.max(0, (avgDeviation - baselineNoise) / triggerDelta);
           const visualPercent = Math.min(100, Math.round(visualRatio * 100));
           setBreathIntensity(visualPercent);
 
-          // Detect sustained physical breath
-          if (avgDeviation > dynamicThreshold && !blowCooldownRef.current) {
+          // Detect physical breath (time domain or air turbulence rumble)
+          const isBreathDetected = (avgDeviation > dynamicThreshold || avgLowFreq > 38);
+
+          if (isBreathDetected && !blowCooldownRef.current) {
             blowStreakRef.current += 1;
-            if (blowStreakRef.current >= 2) {
+            if (blowStreakRef.current >= 1) {
               handleSingleBlow();
             }
           } else {
@@ -313,9 +324,14 @@ export const WishMakingParty: React.FC = () => {
 
         {/* Cake Composition with Cloud Blow Indicator on the RIGHT-HAND SIDE */}
         <div className="relative flex items-center justify-center w-full max-w-2xl mx-auto">
-          {/* Pip The Mascot on Left */}
-          <div className="hidden md:block absolute -left-8 lg:-left-16 bottom-4 z-20">
+          {/* Pip The Mascot on Desktop/Tablet (Left of Cake) */}
+          <div className="hidden md:block absolute -left-6 lg:-left-16 bottom-4 z-20">
             <PipCharacter mood={characterMood} size={115} />
+          </div>
+
+          {/* Pip The Mascot on Mobile (Smaller with whimsical float animation) */}
+          <div className="block md:hidden absolute -left-2 sm:left-0 -bottom-1 z-20 animate-balloon-float">
+            <PipCharacter mood={characterMood} size={70} />
           </div>
 
           {/* Redesigned Gourmet 3-Deck Cake */}

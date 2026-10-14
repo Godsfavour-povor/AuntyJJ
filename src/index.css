@@ -226,76 +226,71 @@ html, body {
   animation: smokePuffRise2 1.7s ease-out 0.28s infinite;
 }
 
-/* ================= CARTOON WIND ANIMATION ================= */
-@keyframes cartoonWindPath {
+/* ================= CANDLE FLAME WIND PHYSICS ================= */
+@keyframes flameBlowoutPhysics {
   0% {
-    stroke-dashoffset: 700;
-    opacity: 0;
-    transform: translateY(35px) scale(0.85);
-  }
-  20% {
+    transform: scale(1, 1) rotate(0deg) translate(0px, 0px) skewX(0deg);
     opacity: 1;
   }
-  80% {
+  15% {
+    /* Blast of wind strikes: flame leans sharply forward and flattens */
+    transform: scale(1.35, 0.55) rotate(45deg) translate(6px, 4px) skewX(20deg);
     opacity: 0.95;
   }
-  100% {
-    stroke-dashoffset: 0;
+  38% {
+    /* Air current pushes flame forward and down, stretching thin */
+    transform: scale(1.65, 0.35) rotate(70deg) translate(14px, 8px) skewX(35deg);
+    opacity: 0.9;
+  }
+  65% {
+    /* Flame stretches horizontally, elongated and flickering furiously */
+    transform: scale(1.8, 0.22) rotate(78deg) translate(20px, 10px) skewX(42deg);
+    opacity: 0.65;
+  }
+  82% {
+    /* Flame detaches from wick and splutters */
+    transform: scale(0.95, 0.15) rotate(84deg) translate(26px, 11px) skewX(45deg);
     opacity: 0.25;
-    transform: translateY(-25px) scale(1.08);
   }
-}
-
-@keyframes cartoonPuffFloat {
-  0% {
-    transform: translateY(40px) scale(0.35);
-    opacity: 0;
-  }
-  25% {
-    opacity: 0.95;
-  }
-  80% {
-    opacity: 0.85;
+  95% {
+    /* Dying ember spark disappearing */
+    transform: scale(0.3, 0.08) rotate(88deg) translate(30px, 12px);
+    opacity: 0.05;
   }
   100% {
-    transform: translateY(-35px) scale(1.25);
+    transform: scale(0, 0) translate(32px, 12px);
     opacity: 0;
   }
 }
 
-@keyframes windBreezeRise {
+@keyframes flameGustFlutter {
   0% {
-    opacity: 0;
-    transform: translateY(20px) scale(0.9);
+    transform: scale(1, 1) rotate(0deg) translate(0px, 0px) skewX(0deg);
   }
-  20% {
-    opacity: 1;
-    transform: translateY(0px) scale(1);
+  22% {
+    transform: scale(1.3, 0.58) rotate(38deg) translate(5px, 4px) skewX(18deg);
   }
-  80% {
-    opacity: 0.95;
+  50% {
+    transform: scale(1.45, 0.45) rotate(58deg) translate(10px, 7px) skewX(28deg);
+  }
+  75% {
+    transform: scale(1.2, 0.72) rotate(22deg) translate(4px, 2px) skewX(10deg);
   }
   100% {
-    opacity: 0;
-    transform: translateY(-15px) scale(1.05);
+    transform: scale(1, 1) rotate(0deg) translate(0px, 0px) skewX(0deg);
   }
 }
 
-.animate-cartoon-wind {
-  stroke-dasharray: 700;
+.animate-flame-blowout {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: cartoonWindPath 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom center;
+  animation: flameBlowoutPhysics 0.95s cubic-bezier(0.18, 0.8, 0.25, 1) forwards;
 }
 
-.animate-cartoon-puff {
+.animate-flame-gust {
   transform-box: fill-box;
-  transform-origin: center;
-  animation: cartoonPuffFloat 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-wind-breeze {
-  animation: windBreezeRise 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom center;
+  animation: flameGustFlutter 0.95s cubic-bezier(0.18, 0.8, 0.25, 1) forwards;
 }
 
 /* ================= INFINITE FLOWER BURST CASCADE ================= */

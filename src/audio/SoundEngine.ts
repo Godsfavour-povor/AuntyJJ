@@ -221,7 +221,7 @@ class SoundEngine {
     this.musicGain.gain.linearRampToValueAtTime(duck ? 0.08 : 0.55, now + 0.3);
   }
 
-  // --- CONTINUOUS PROCEDURAL SOUNDTRACK ---
+  // --- CONTINUOUS PROCEDURAL SOUNDTRACK (Cinematic Orchestral Arrangement) ---
   public startMusic() {
     if (this.isMuted || this.isMusicPlaying || this.isBackgrounded) return;
     const ctx = this.initContext();
@@ -230,75 +230,84 @@ class SoundEngine {
     this.isMusicPlaying = true;
     const now = ctx.currentTime;
 
-    // 1. Warm Strings Pad (F-Major gentle lowpass background bed)
+    // 1. Lush Orchestral String Ensemble Pad (Cellos, Violas, Bowed Violins)
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(320, now); // Warm, mellow filter
+    filter.frequency.setValueAtTime(450, now); // Warm, acoustic wooden chamber resonance
     filter.connect(this.musicGain);
 
     this.padGain = ctx.createGain();
     this.padGain.gain.setValueAtTime(0, now);
-    this.padGain.gain.linearRampToValueAtTime(0.12, now + 2.0); // Gentle background gain
+    this.padGain.gain.linearRampToValueAtTime(0.14, now + 2.0);
     this.padGain.connect(filter);
 
-    // Warm chord notes: F3, C4, A4, G4
-    const padFreqs = [174.61, 261.63, 440.0, 392.0];
+    // Warm orchestral chord tones: F2 (deep cello), C3, A3, C4, F4 (soaring violins)
+    const orchestralStrings = [87.31, 130.81, 220.0, 261.63, 349.23];
     this.padOscillators = [];
 
-    padFreqs.forEach((freq, i) => {
+    orchestralStrings.forEach((freq, i) => {
       const osc = ctx.createOscillator();
-      osc.type = 'sine'; // Pure sine for zero distortion
+      osc.type = i === 0 ? 'sine' : 'triangle';
       osc.frequency.setValueAtTime(freq, now);
-      osc.detune.setValueAtTime((i - 1.5) * 2, now);
+      osc.detune.setValueAtTime((i - 2) * 3, now); // Gentle ensemble detune
+
+      // Warm string vibrato LFO (5.2Hz natural human violinist vibrato)
+      const lfo = ctx.createOscillator();
+      lfo.frequency.setValueAtTime(5.2, now);
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.setValueAtTime(1.8, now);
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(now);
 
       const oscGain = ctx.createGain();
-      oscGain.gain.setValueAtTime(0.04, now);
+      oscGain.gain.setValueAtTime(0.035, now);
       osc.connect(oscGain);
       oscGain.connect(this.padGain!);
 
       osc.start(now);
-      this.padOscillators.push(osc);
+      this.padOscillators.push(osc, lfo as unknown as OscillatorNode);
     });
 
-    // 2. Playful Piano & Celesta Melody Sequencer (Authentic "Happy Birthday To You")
+    // 2. Cinematic Orchestral Melody Sequencer ("Happy Birthday To You")
     this.noteStep = 0;
     this.playMelodyStep();
   }
 
   // Authentic "Happy Birthday to You" notes and timing
-  private happyBirthdayNotes: Array<{ f: number; d: number; wait: number; bassFreq?: number }> = [
+  private happyBirthdayNotes: Array<{ f: number; d: number; wait: number; bassFreq?: number; chord?: number[] }> = [
     // Phrase 1: "Hap-py birth-day to you"
-    { f: 261.63, d: 0.32, wait: 360, bassFreq: 174.61 }, // C4 ("Hap-")
-    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 261.63, d: 0.35, wait: 360, bassFreq: 174.61 }, // C4 ("Hap-")
+    { f: 261.63, d: 0.22, wait: 240 },                   // C4 ("-py")
     { f: 293.66, d: 0.55, wait: 580 },                   // D4 ("birth-")
     { f: 261.63, d: 0.55, wait: 580 },                   // C4 ("-day")
     { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("to")
-    { f: 329.63, d: 1.10, wait: 1150, bassFreq: 130.81 }, // E4 ("you~")
+    { f: 329.63, d: 1.15, wait: 1150, bassFreq: 130.81, chord: [261.63, 329.63, 392.00] }, // E4 ("you~")
 
     // Phrase 2: "Hap-py birth-day to you"
-    { f: 261.63, d: 0.32, wait: 360 },                   // C4 ("Hap-")
-    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 261.63, d: 0.35, wait: 360 },                   // C4 ("Hap-")
+    { f: 261.63, d: 0.22, wait: 240 },                   // C4 ("-py")
     { f: 293.66, d: 0.55, wait: 580 },                   // D4 ("birth-")
     { f: 261.63, d: 0.55, wait: 580 },                   // C4 ("-day")
     { f: 392.00, d: 0.55, wait: 580 },                   // G4 ("to")
-    { f: 349.23, d: 1.10, wait: 1150, bassFreq: 174.61 }, // F4 ("you~")
+    { f: 349.23, d: 1.15, wait: 1150, bassFreq: 174.61, chord: [174.61, 220.00, 261.63, 349.23] }, // F4 ("you~")
 
     // Phrase 3: "Hap-py birth-day dear Sis-ter"
-    { f: 261.63, d: 0.32, wait: 360 },                   // C4 ("Hap-")
-    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 261.63, d: 0.35, wait: 360 },                   // C4 ("Hap-")
+    { f: 261.63, d: 0.22, wait: 240 },                   // C4 ("-py")
     { f: 523.25, d: 0.55, wait: 580, bassFreq: 233.08 }, // C5 ("birth-")
     { f: 440.00, d: 0.55, wait: 580 },                   // A4 ("-day")
     { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("dear")
     { f: 329.63, d: 0.55, wait: 580 },                   // E4 ("Sis-")
-    { f: 293.66, d: 1.10, wait: 1150, bassFreq: 146.83 }, // D4 ("-ter~")
+    { f: 293.66, d: 1.15, wait: 1150, bassFreq: 146.83, chord: [146.83, 220.00, 293.66] }, // D4 ("-ter~")
 
     // Phrase 4: "Hap-py birth-day to you!"
-    { f: 466.16, d: 0.32, wait: 360 },                   // Bb4 ("Hap-")
-    { f: 466.16, d: 0.20, wait: 240 },                   // Bb4 ("-py")
+    { f: 466.16, d: 0.35, wait: 360 },                   // Bb4 ("Hap-")
+    { f: 466.16, d: 0.22, wait: 240 },                   // Bb4 ("-py")
     { f: 440.00, d: 0.55, wait: 580 },                   // A4 ("birth-")
     { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("-day")
     { f: 392.00, d: 0.65, wait: 680, bassFreq: 130.81 }, // G4 ("to")
-    { f: 349.23, d: 1.60, wait: 2200, bassFreq: 174.61 }, // F4 ("you~~!")
+    { f: 349.23, d: 1.70, wait: 2300, bassFreq: 174.61, chord: [174.61, 261.63, 349.23, 440.00, 523.25] }, // F4 ("you~~!")
   ];
 
   private playMelodyStep = () => {
@@ -307,62 +316,183 @@ class SoundEngine {
     const noteIndex = this.noteStep % this.happyBirthdayNotes.length;
     const currentNote = this.happyBirthdayNotes[noteIndex];
 
-    // 1. Felt Piano Lead (Warm, rounded, gentle)
-    this.triggerPianoNote(currentNote.f, currentNote.d);
+    // 1. Orchestral Flute Solo (Romantic, singing, lyrical)
+    this.triggerOrchestralFlute(currentNote.f, currentNote.d);
 
-    // 2. Glockenspiel Bell Sparkle
+    // 2. Warm Bowed Violin Lead (Singing melody with vibrato)
+    this.triggerOrchestralViolin(currentNote.f, currentNote.d);
+
+    // 3. Celesta / Glockenspiel Starlight Sparkle
     this.triggerGlockenspielNote(currentNote.f * 2, currentNote.d * 0.7);
 
-    // 3. Warm Acoustic Bass on harmonic roots (Pure Sine for zero speaker rattle)
+    // 4. Orchestral Double Bass & Timpani on harmonic roots
     if (currentNote.bassFreq) {
-      this.triggerPizzicatoNote(currentNote.bassFreq, currentNote.d * 1.2);
-      this.triggerWoodblockTap();
+      this.triggerOrchestralDoubleBass(currentNote.bassFreq, currentNote.d * 1.3);
     }
 
-    // 4. Cheerful Ukulele / Guitar chord strum on upbeat
+    // 5. Concert Harp Arpeggio Sweep on upbeat
     if (this.noteStep % 2 === 1) {
-      this.triggerUkuleleStrum([349.23, 440.00, 523.25]); // F Major chord triad
+      this.triggerConcertHarp([currentNote.f * 0.5, currentNote.f, currentNote.f * 1.5, currentNote.f * 2]);
+    }
+
+    // 6. French Horn & Brass Swell on cadence chords
+    if (currentNote.chord) {
+      this.triggerFrenchHorn(currentNote.chord, currentNote.d * 1.2);
     }
 
     this.noteStep++;
     this.melodyTimer = window.setTimeout(this.playMelodyStep, currentNote.wait);
   };
 
-  // Synthesize acoustic felt piano note (Soft & warm with lowpass filter)
-  private triggerPianoNote(freq: number, duration: number) {
+  // Synthesize Orchestral Flute (Pure, airy, lyrical woodwind tone)
+  private triggerOrchestralFlute(freq: number, duration: number) {
     if (!this.ctx || !this.musicGain || this.isMuted) return;
     try {
       const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
 
-      // Soft wooden lowpass filter
+      // Subtle air breath harmonic
+      const breath = this.ctx.createOscillator();
+      breath.type = 'triangle';
+      breath.frequency.setValueAtTime(freq * 2, now);
+
       const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1400, now);
+      filter.frequency.setValueAtTime(freq * 2.8, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.09, now + 0.04); // Gentle woodwind attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.1);
+
+      osc.connect(gain);
+      breath.connect(gain);
+      gain.connect(filter);
       filter.connect(this.musicGain);
 
-      // Fundamental tone
+      osc.start(now);
+      breath.start(now);
+      osc.stop(now + duration + 0.12);
+      breath.stop(now + duration + 0.12);
+    } catch {}
+  }
+
+  // Synthesize Warm Bowed Violin (Acoustic string body with sweet natural vibrato)
+  private triggerOrchestralViolin(freq: number, duration: number) {
+    if (!this.ctx || !this.musicGain || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
       const osc = this.ctx.createOscillator();
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(freq, now);
 
-      // Harmonic chime
-      const osc2 = this.ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(freq * 2, now);
+      // Natural string vibrato
+      const vibrato = this.ctx.createOscillator();
+      vibrato.frequency.setValueAtTime(5.4, now);
+      const vibratoGain = this.ctx.createGain();
+      vibratoGain.gain.setValueAtTime(0, now);
+      vibratoGain.gain.linearRampToValueAtTime(2.2, now + 0.12); // Vibrato blooms smoothly
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc.frequency);
+      vibrato.start(now);
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(1600, now);
 
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.12, now + 0.015);
+      gain.gain.linearRampToValueAtTime(0.10, now + 0.05); // Smooth bow stroke
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.15);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.musicGain);
+
+      osc.start(now);
+      osc.stop(now + duration + 0.18);
+      vibrato.stop(now + duration + 0.18);
+    } catch {}
+  }
+
+  // Synthesize Concert Harp Arpeggio (Delicate, crystalline plucked harp strings)
+  private triggerConcertHarp(notes: number[]) {
+    if (!this.ctx || !this.musicGain || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      notes.forEach((freq, i) => {
+        const strumOffset = i * 0.035;
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + strumOffset);
+
+        const filter = this.ctx!.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1800, now + strumOffset);
+
+        const gain = this.ctx!.createGain();
+        gain.gain.setValueAtTime(0.04, now + strumOffset);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + strumOffset + 0.45);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.musicGain!);
+
+        osc.start(now + strumOffset);
+        osc.stop(now + strumOffset + 0.48);
+      });
+    } catch {}
+  }
+
+  // Synthesize Warm French Horn & Brass Swell (Majestic golden orchestral chords)
+  private triggerFrenchHorn(chordNotes: number[], duration: number) {
+    if (!this.ctx || !this.musicGain || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(700, now); // Warm, mellow brass bell
+      filter.connect(this.musicGain);
+
+      chordNotes.forEach((freq) => {
+        const osc = this.ctx!.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, now);
+
+        const gain = this.ctx!.createGain();
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.032, now + 0.15); // Grand brass swell
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + duration + 0.2);
+
+        osc.connect(gain);
+        gain.connect(filter);
+
+        osc.start(now);
+        osc.stop(now + duration + 0.25);
+      });
+    } catch {}
+  }
+
+  // Synthesize Orchestral Double Bass & Gentle Timpani
+  private triggerOrchestralDoubleBass(freq: number, duration: number) {
+    if (!this.ctx || !this.musicGain || this.isMuted) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.12, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
-      osc2.connect(gain);
-      gain.connect(filter);
+      gain.connect(this.musicGain);
 
       osc.start(now);
-      osc2.start(now);
       osc.stop(now + duration);
-      osc2.stop(now + duration);
     } catch {}
   }
 
@@ -376,30 +506,7 @@ class SoundEngine {
       osc.frequency.setValueAtTime(freq, now);
 
       const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.035, now + 0.005);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration * 0.6);
-
-      osc.connect(gain);
-      gain.connect(this.musicGain);
-
-      osc.start(now);
-      osc.stop(now + duration * 0.6);
-    } catch {}
-  }
-
-  // Synthesize round, mellow acoustic bass (Pure Sine for zero speaker buzz)
-  private triggerPizzicatoNote(freq: number, duration: number) {
-    if (!this.ctx || !this.musicGain || this.isMuted) return;
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sine'; // Sine wave never buzzes laptop speakers
-      osc.frequency.setValueAtTime(freq, now);
-
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.09, now + 0.02);
+      gain.gain.setValueAtTime(0.05, now);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
       osc.connect(gain);
@@ -407,57 +514,6 @@ class SoundEngine {
 
       osc.start(now);
       osc.stop(now + duration);
-    } catch {}
-  }
-
-  // Synthesize cheerful acoustic ukulele / guitar strum
-  private triggerUkuleleStrum(chordFreqs: number[]) {
-    if (!this.ctx || !this.musicGain || this.isMuted) return;
-    try {
-      const now = this.ctx.currentTime;
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(1100, now);
-      filter.connect(this.musicGain);
-
-      chordFreqs.forEach((freq, idx) => {
-        const strumOffset = idx * 0.02;
-        const osc = this.ctx!.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, now + strumOffset);
-
-        const gain = this.ctx!.createGain();
-        gain.gain.setValueAtTime(0.03, now + strumOffset);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + strumOffset + 0.25);
-
-        osc.connect(gain);
-        gain.connect(filter);
-
-        osc.start(now + strumOffset);
-        osc.stop(now + strumOffset + 0.28);
-      });
-    } catch {}
-  }
-
-  // Synthesize soft woodblock / percussion tap
-  private triggerWoodblockTap() {
-    if (!this.ctx || !this.musicGain || this.isMuted) return;
-    try {
-      const now = this.ctx.currentTime;
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(600, now);
-      osc.frequency.exponentialRampToValueAtTime(260, now + 0.03);
-
-      const gain = this.ctx.createGain();
-      gain.gain.setValueAtTime(0.035, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
-
-      osc.connect(gain);
-      gain.connect(this.musicGain);
-
-      osc.start(now);
-      osc.stop(now + 0.04);
     } catch {}
   }
 
@@ -632,35 +688,107 @@ class SoundEngine {
     } catch {}
   }
 
-  // 6. Party Horn Kazoo Toot
-  public playPartyHorn() {
+  // 6. Joyous "HOORAY! 🎉" Celebration Sound (Authentic Choral Cheer, Shimmering Chimes & Fanfare)
+  public playHoorayCelebration() {
     if (this.isMuted) return;
     const ctx = this.initContext();
     if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(260, now);
-      osc.frequency.linearRampToValueAtTime(340, now + 0.25);
 
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(750, now);
-      filter.Q.setValueAtTime(2.8, now);
+      // Part 1: Harmonized Vocal Cheer ("HOO-RAY!")
+      // 3 cheering choral voices rising in pitch with formant vowel filters
+      const voices = [
+        { startFreq: 261.63, endFreq: 440.00 }, // C4 -> A4
+        { startFreq: 329.63, endFreq: 554.37 }, // E4 -> C#5
+        { startFreq: 392.00, endFreq: 659.25 }, // G4 -> E5
+      ];
 
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.14, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      voices.forEach((voice, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(voice.startFreq, now);
+        // Exultant cheering pitch rise
+        osc.frequency.exponentialRampToValueAtTime(voice.endFreq, now + 0.38);
 
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(this.sfxGain);
+        // Vocal Formant Filter 1 ("Ooh" to "Aay")
+        const f1 = ctx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.Q.setValueAtTime(4.0, now);
+        f1.frequency.setValueAtTime(360, now);
+        f1.frequency.linearRampToValueAtTime(620, now + 0.35);
 
-      osc.start(now);
-      osc.stop(now + 0.35);
+        // Vocal Formant Filter 2 (Upper vowel clarity)
+        const f2 = ctx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.Q.setValueAtTime(4.5, now);
+        f2.frequency.setValueAtTime(900, now);
+        f2.frequency.linearRampToValueAtTime(1850, now + 0.35);
+
+        const voiceGain = ctx.createGain();
+        voiceGain.gain.setValueAtTime(0, now);
+        voiceGain.gain.linearRampToValueAtTime(0.08, now + 0.06);
+        voiceGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+
+        osc.connect(f1);
+        f1.connect(voiceGain);
+        osc.connect(f2);
+        f2.connect(voiceGain);
+        voiceGain.connect(this.sfxGain!);
+
+        osc.start(now + i * 0.015);
+        osc.stop(now + 0.68);
+      });
+
+      // Part 2: Shimmering Celestial Celebration Bells (Pentatonic Sparkle Cascade)
+      const sparkleNotes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+      sparkleNotes.forEach((freq, idx) => {
+        const startTime = now + 0.12 + idx * 0.055;
+        const bellOsc = ctx.createOscillator();
+        bellOsc.type = 'sine';
+        bellOsc.frequency.setValueAtTime(freq, startTime);
+
+        const bellGain = ctx.createGain();
+        bellGain.gain.setValueAtTime(0.09, startTime);
+        bellGain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.85);
+
+        bellOsc.connect(bellGain);
+        bellGain.connect(this.sfxGain!);
+
+        bellOsc.start(startTime);
+        bellOsc.stop(startTime + 0.85);
+      });
+
+      // Part 3: Warm Orchestral Fanfare Chord (F Major swell)
+      const fanfareChord = [174.61, 261.63, 349.23, 440.00, 523.25];
+      fanfareChord.forEach((freq) => {
+        const brassOsc = ctx.createOscillator();
+        brassOsc.type = 'triangle';
+        brassOsc.frequency.setValueAtTime(freq, now + 0.05);
+
+        const brassFilter = ctx.createBiquadFilter();
+        brassFilter.type = 'lowpass';
+        brassFilter.frequency.setValueAtTime(1400, now);
+
+        const brassGain = ctx.createGain();
+        brassGain.gain.setValueAtTime(0, now + 0.05);
+        brassGain.gain.linearRampToValueAtTime(0.06, now + 0.2);
+        brassGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+        brassOsc.connect(brassFilter);
+        brassFilter.connect(brassGain);
+        brassGain.connect(this.sfxGain!);
+
+        brassOsc.start(now + 0.05);
+        brassOsc.stop(now + 1.25);
+      });
     } catch {}
+  }
+
+  // Alias keeping compatibility with all celebration call sites
+  public playPartyHorn() {
+    this.playHoorayCelebration();
   }
 
   // 7. Scratch Chime
