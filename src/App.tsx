@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { AdventureProvider, useAdventure } from './context/AdventureContext';
 import { AudioToggle } from './components/HUD/AudioToggle';
-import { SceneNav } from './components/HUD/SceneNav';
 import { MemoryModal } from './components/Modal/MemoryModal';
 import { BirthdayPortal } from './scenes/BirthdayPortal/BirthdayPortal';
 import { WishMakingParty } from './scenes/WishMakingParty/WishMakingParty';
@@ -26,14 +25,13 @@ const AdventureContent: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-cream text-deep-ink font-sans overflow-x-hidden selection:bg-yellow selection:text-deep-ink">
-      {/* Global Fixed HUD (Responsive & notch-safe) */}
-      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between p-3.5 sm:p-6 pointer-events-none">
+      {/* Global Fixed HUD: Discreet Sound Toggle in top-left, top-right completely clean */}
+      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between p-3.5 sm:p-5 pointer-events-none">
         <div className="pointer-events-auto">
           <AudioToggle />
         </div>
-        <div className="pointer-events-auto">
-          <SceneNav />
-        </div>
+        {/* Top-Right intentionally clean & empty */}
+        <div />
       </header>
 
       {/* Main Interactive Scene Switcher */}

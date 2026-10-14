@@ -1,12 +1,24 @@
-// Playful Cartoon & Celebration Procedural Sound Engine
-// Zero external audio files required, 0KB downloads, instant playback
+// Advanced Procedural Web Audio Engine
+// Continuous multi-layered animated-film soundtrack (piano, strings, celesta, pizzicato)
+// Cohesive tactile sound effects library. Zero external assets, 0KB downloads, instant playback.
+
+import type { SceneId } from '../types';
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-  private musicGain: GainNode | null = null;
   private isMusicPlaying: boolean = false;
+
+  private masterGain: GainNode | null = null;
+  private musicGain: GainNode | null = null;
+  private sfxGain: GainNode | null = null;
+
+  private padOscillators: OscillatorNode[] = [];
+  private padGain: GainNode | null = null;
+
   private melodyTimer: number | null = null;
+  private currentScene: SceneId = 'scene_1_portal';
+  private noteStep: number = 0;
 
   private initContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
@@ -14,6 +26,21 @@ class SoundEngine {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+
+        // Master Gain
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 1, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+
+        // Music Sub-Bus
+        this.musicGain = this.ctx.createGain();
+        this.musicGain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        this.musicGain.connect(this.masterGain);
+
+        // SFX Sub-Bus
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        this.sfxGain.connect(this.masterGain);
       }
     }
     if (this.ctx && this.ctx.state === 'suspended') {
@@ -24,11 +51,11 @@ class SoundEngine {
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
-    if (this.musicGain && this.ctx) {
+    if (this.masterGain && this.ctx) {
       const now = this.ctx.currentTime;
-      this.musicGain.gain.cancelScheduledValues(now);
-      this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
-      this.musicGain.gain.linearRampToValueAtTime(muted ? 0 : 0.06, now + 0.2);
+      this.masterGain.gain.cancelScheduledValues(now);
+      this.masterGain.gain.setValueAtTime(this.masterGain.gain.value, now);
+      this.masterGain.gain.linearRampToValueAtTime(muted ? 0 : 1, now + 0.2);
     }
   }
 
@@ -40,135 +67,336 @@ class SoundEngine {
     this.initContext();
   }
 
-  // 1. Cheerful Background Music Box Loop (Gentle F-Major Lullaby)
-  public startMusicLoop() {
+  // Set scene for dynamic music progression
+  public setScene(scene: SceneId) {
+    this.currentScene = scene;
+    if (this.ctx && this.musicGain) {
+      const now = this.ctx.currentTime;
+      // Smooth dynamic volume balance per scene
+      if (scene === 'scene_2_party') {
+        this.musicGain.gain.linearRampToValueAtTime(0.075, now + 0.5);
+      } else if (scene === 'scene_3_discovery') {
+        this.musicGain.gain.linearRampToValueAtTime(0.085, now + 0.5);
+      } else if (scene === 'scene_4_finale') {
+        this.musicGain.gain.linearRampToValueAtTime(0.1, now + 0.5);
+      }
+    }
+  }
+
+  // Temporarily duck music for candle blowing
+  public duckMusic(duck: boolean) {
+    if (!this.ctx || !this.musicGain) return;
+    const now = this.ctx.currentTime;
+    this.musicGain.gain.cancelScheduledValues(now);
+    this.musicGain.gain.setValueAtTime(this.musicGain.gain.value, now);
+    this.musicGain.gain.linearRampToValueAtTime(duck ? 0.02 : 0.08, now + 0.4);
+  }
+
+  // --- CONTINUOUS PROCEDURAL SOUNDTRACK ---
+  public startMusic() {
     if (this.isMusicPlaying) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.musicGain) return;
 
+    this.isMusicPlaying = true;
+    const now = ctx.currentTime;
+
+    // 1. Warm Strings Pad (F-Major9 drone with gentle chorused filter)
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(450, now);
+    filter.connect(this.musicGain);
+
+    this.padGain = ctx.createGain();
+    this.padGain.gain.setValueAtTime(0, now);
+    this.padGain.gain.linearRampToValueAtTime(0.4, now + 2.5);
+    this.padGain.connect(filter);
+
+    // Warm chord notes: F3 (174.61), C4 (261.63), A4 (440.00), G4 (392.00)
+    const padFreqs = [174.61, 261.63, 440.0, 392.0];
+    this.padOscillators = [];
+
+    padFreqs.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = i % 2 === 0 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+      // Subtle detune for warm orchestral breath
+      osc.detune.setValueAtTime((i - 1.5) * 3, now);
+
+      const oscGain = ctx.createGain();
+      oscGain.gain.setValueAtTime(0.18, now);
+      osc.connect(oscGain);
+      oscGain.connect(this.padGain!);
+
+      osc.start(now);
+      this.padOscillators.push(osc);
+    });
+
+    // 2. Playful Piano & Celesta Melody Sequencer
+    this.noteStep = 0;
+    this.playMelodyStep();
+  }
+
+  private playMelodyStep = () => {
+    if (!this.isMusicPlaying || !this.ctx || !this.musicGain) return;
+
+    // Adapt melodic sequence based on current scene
+    // F-Major warm animated melody motifs
+    const portalMotif = [
+      { f: 349.23, d: 0.9 }, // F4
+      { f: 440.00, d: 0.8 }, // A4
+      { f: 523.25, d: 1.1 }, // C5
+      { f: 440.00, d: 0.7 }, // A4
+      { f: 587.33, d: 1.2 }, // D5
+      { f: 523.25, d: 0.9 }, // C5
+      { f: 392.00, d: 1.4 }, // G4
+      { f: 349.23, d: 1.6 }, // F4
+    ];
+
+    const partyMotif = [
+      { f: 523.25, d: 0.7 }, // C5
+      { f: 587.33, d: 0.6 }, // D5
+      { f: 659.25, d: 0.8 }, // E5
+      { f: 698.46, d: 1.0 }, // F5
+      { f: 659.25, d: 0.7 }, // E5
+      { f: 587.33, d: 0.7 }, // D5
+      { f: 523.25, d: 1.2 }, // C5
+      { f: 440.00, d: 1.4 }, // A4
+    ];
+
+    const discoveryMotif = [
+      { f: 440.00, d: 0.5 }, // A4
+      { f: 523.25, d: 0.5 }, // C5
+      { f: 587.33, d: 0.6 }, // D5
+      { f: 659.25, d: 0.6 }, // E5
+      { f: 587.33, d: 0.5 }, // D5
+      { f: 523.25, d: 0.6 }, // C5
+      { f: 698.46, d: 1.0 }, // F5
+      { f: 587.33, d: 1.2 }, // D5
+    ];
+
+    const finaleMotif = [
+      { f: 349.23, d: 0.8 }, // F4
+      { f: 523.25, d: 0.8 }, // C5
+      { f: 698.46, d: 1.2 }, // F5
+      { f: 659.25, d: 0.8 }, // E5
+      { f: 587.33, d: 0.9 }, // D5
+      { f: 523.25, d: 1.1 }, // C5
+      { f: 440.00, d: 0.9 }, // A4
+      { f: 349.23, d: 2.0 }, // F4
+    ];
+
+    let currentMotif = portalMotif;
+    if (this.currentScene === 'scene_2_party') currentMotif = partyMotif;
+    else if (this.currentScene === 'scene_3_discovery') currentMotif = discoveryMotif;
+    else if (this.currentScene === 'scene_4_finale') currentMotif = finaleMotif;
+
+    const currentNote = currentMotif[this.noteStep % currentMotif.length];
+    this.triggerPianoNote(currentNote.f, currentNote.d);
+
+    // In Scene 3 (Mini-Game), add a subtle playful pizzicato bass note!
+    if (this.currentScene === 'scene_3_discovery' && this.noteStep % 2 === 0) {
+      this.triggerPizzicatoNote(currentNote.f * 0.5, 0.4);
+    }
+
+    this.noteStep++;
+    // Tempo: ~750ms between notes for relaxed, lyrical pacing
+    this.melodyTimer = window.setTimeout(this.playMelodyStep, 780);
+  };
+
+  // Synthesize acoustic felt piano note
+  private triggerPianoNote(freq: number, duration: number) {
+    if (!this.ctx || !this.musicGain) return;
     try {
-      this.isMusicPlaying = true;
-      const now = ctx.currentTime;
+      const now = this.ctx.currentTime;
 
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0, now);
-      masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : 0.05, now + 2);
-      masterGain.connect(ctx.destination);
-      this.musicGain = masterGain;
-
-      // Filter for warm music-box chime tone
-      const filter = ctx.createBiquadFilter();
+      // Filter to simulate warm wooden soundboard
+      const filter = this.ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(800, now);
-      filter.connect(masterGain);
+      filter.frequency.setValueAtTime(freq * 3.5, now);
+      filter.connect(this.musicGain);
 
-      // Cheerful F-Major notes sequence: F4, A4, C5, D5, C5, A4, G4, F4
-      const notes = [349.23, 440.00, 523.25, 587.33, 523.25, 440.00, 392.00, 349.23];
-      let noteIndex = 0;
+      // Fundamental tone
+      const osc = this.ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
 
-      const playNextNote = () => {
-        if (!this.isMusicPlaying || !this.ctx) return;
-        const noteTime = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(notes[noteIndex], noteTime);
+      // Harmonic chime
+      const osc2 = this.ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(freq * 2, now);
 
-        const noteGain = this.ctx.createGain();
-        noteGain.gain.setValueAtTime(0.12, noteTime);
-        noteGain.gain.exponentialRampToValueAtTime(0.0001, noteTime + 0.9);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.015); // Fast piano hammer attack
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
-        osc.connect(noteGain);
-        noteGain.connect(filter);
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(filter);
 
-        osc.start(noteTime);
-        osc.stop(noteTime + 0.9);
-
-        noteIndex = (noteIndex + 1) % notes.length;
-        this.melodyTimer = window.setTimeout(playNextNote, 850);
-      };
-
-      playNextNote();
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + duration);
+      osc2.stop(now + duration);
     } catch {}
   }
 
-  public stopMusicLoop() {
+  // Synthesize playful pizzicato pluck
+  private triggerPizzicatoNote(freq: number, duration: number) {
+    if (!this.ctx || !this.musicGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      osc.connect(gain);
+      gain.connect(this.musicGain);
+
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch {}
+  }
+
+  public stopMusic() {
     this.isMusicPlaying = false;
     if (this.melodyTimer) {
       clearTimeout(this.melodyTimer);
       this.melodyTimer = null;
     }
-    if (this.musicGain && this.ctx) {
-      try {
-        const now = this.ctx.currentTime;
-        this.musicGain.gain.linearRampToValueAtTime(0, now + 0.5);
-      } catch {}
+    if (this.padGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.padGain.gain.linearRampToValueAtTime(0, now + 1.0);
     }
+    setTimeout(() => {
+      this.padOscillators.forEach((osc) => {
+        try { osc.stop(); osc.disconnect(); } catch {}
+      });
+      this.padOscillators = [];
+    }, 1200);
   }
 
-  // 2. Playful Cartoon Button Pop
-  public playCartoonPop() {
+  // --- SOUND EFFECTS LIBRARY ---
+
+  // 1. Tactile Cartoon Pop (Soft, rubbery, satisfying)
+  public playPop() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(420, now);
-      osc.frequency.exponentialRampToValueAtTime(110, now + 0.08);
+      osc.frequency.setValueAtTime(360, now);
+      osc.frequency.exponentialRampToValueAtTime(100, now + 0.07);
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.sfxGain);
 
       osc.start(now);
-      osc.stop(now + 0.09);
+      osc.stop(now + 0.08);
     } catch {}
   }
 
-  // 3. Pip's Cheerful Greeting Whistle
-  public playPipGreeting() {
+  // 2. Cute Little Footstep Tap (Pip walking in mini-game)
+  public playFootstep() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
-      // Note 1
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(160 + Math.random() * 40, now);
+
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+      osc.connect(gain);
+      gain.connect(this.sfxGain);
+
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } catch {}
+  }
+
+  // 3. Treasure Collect Chime (Sparkling pentatonic ping)
+  public playCollect() {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [659.25, 880.00, 1046.50]; // E5, A5, C6
+
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.07);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.14, now + i * 0.07);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.07 + 0.5);
+
+        osc.connect(gain);
+        gain.connect(this.sfxGain!);
+
+        osc.start(now + i * 0.07);
+        osc.stop(now + i * 0.07 + 0.5);
+      });
+    } catch {}
+  }
+
+  // 4. Pip Greeting Whistle
+  public playGreeting() {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    try {
+      const now = ctx.currentTime;
       const osc1 = ctx.createOscillator();
       osc1.type = 'sine';
       osc1.frequency.setValueAtTime(587.33, now); // D5
       const gain1 = ctx.createGain();
-      gain1.gain.setValueAtTime(0.14, now);
+      gain1.gain.setValueAtTime(0.15, now);
       gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
       osc1.connect(gain1);
-      gain1.connect(ctx.destination);
+      gain1.connect(this.sfxGain);
       osc1.start(now);
       osc1.stop(now + 0.12);
 
-      // Note 2
       const osc2 = ctx.createOscillator();
       osc2.type = 'sine';
       osc2.frequency.setValueAtTime(880.00, now + 0.12); // A5
       const gain2 = ctx.createGain();
       gain2.gain.setValueAtTime(0.16, now + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
       osc2.connect(gain2);
-      gain2.connect(ctx.destination);
+      gain2.connect(this.sfxGain);
       osc2.start(now + 0.12);
-      osc2.stop(now + 0.32);
+      osc2.stop(now + 0.3);
     } catch {}
   }
 
-  // 4. Soft Candle Breath Puff
+  // 5. Candle Puff / Air Breath
   public playCandlePuff() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
@@ -181,7 +409,7 @@ class SoundEngine {
         const white = Math.random() * 2 - 1;
         data[i] = (lastOut + 0.02 * white) / 1.02;
         lastOut = data[i];
-        data[i] *= 3.0;
+        data[i] *= 2.8;
       }
 
       const noise = ctx.createBufferSource();
@@ -189,7 +417,7 @@ class SoundEngine {
 
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(320, now);
+      filter.frequency.setValueAtTime(340, now);
       filter.Q.setValueAtTime(1.8, now);
 
       const gain = ctx.createGain();
@@ -198,48 +426,48 @@ class SoundEngine {
 
       noise.connect(filter);
       filter.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.sfxGain);
 
       noise.start(now);
     } catch {}
   }
 
-  // 5. Party Horn / Kazoo Cheer
+  // 6. Party Horn Kazoo Toot
   public playPartyHorn() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(260, now);
-      osc.frequency.linearRampToValueAtTime(340, now + 0.25);
+      osc.frequency.linearRampToValueAtTime(350, now + 0.28);
 
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(750, now);
-      filter.Q.setValueAtTime(3.0, now);
+      filter.frequency.setValueAtTime(780, now);
+      filter.Q.setValueAtTime(3.2, now);
 
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0.18, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
 
       osc.connect(filter);
       filter.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.sfxGain);
 
       osc.start(now);
       osc.stop(now + 0.4);
     } catch {}
   }
 
-  // 6. Scratch Sparkle Chime (Glockenspiel)
+  // 7. Scratch Chime (Glockenspiel)
   public playScratchChime() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
@@ -251,43 +479,14 @@ class SoundEngine {
       osc.frequency.setValueAtTime(randomNote, now);
 
       const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
 
       osc.connect(gain);
-      gain.connect(ctx.destination);
+      gain.connect(this.sfxGain);
 
       osc.start(now);
-      osc.stop(now + 0.35);
-    } catch {}
-  }
-
-  // 7. Card Reveal Arpeggio
-  public playCardReveal() {
-    if (this.isMuted) return;
-    const ctx = this.initContext();
-    if (!ctx) return;
-
-    try {
-      const now = ctx.currentTime;
-      const notes = [440.00, 554.37, 659.25, 880.00];
-
-      notes.forEach((freq, idx) => {
-        const startTime = now + idx * 0.08;
-        const osc = ctx.createOscillator();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(freq, startTime);
-
-        const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.12, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.0);
-
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.start(startTime);
-        osc.stop(startTime + 1.0);
-      });
+      osc.stop(now + 0.3);
     } catch {}
   }
 
@@ -295,28 +494,27 @@ class SoundEngine {
   public playFinaleFanfare() {
     if (this.isMuted) return;
     const ctx = this.initContext();
-    if (!ctx) return;
+    if (!ctx || !this.sfxGain) return;
 
     try {
       const now = ctx.currentTime;
-      // Joyous celebration arpeggio
       const notes = [349.23, 440.00, 523.25, 698.46, 880.00, 1046.50];
 
       notes.forEach((freq, idx) => {
-        const startTime = now + idx * 0.1;
+        const startTime = now + idx * 0.09;
         const osc = ctx.createOscillator();
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, startTime);
 
         const gain = ctx.createGain();
-        gain.gain.setValueAtTime(0.15, startTime);
-        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.5);
+        gain.gain.setValueAtTime(0.16, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 1.6);
 
         osc.connect(gain);
-        gain.connect(ctx.destination);
+        gain.connect(this.sfxGain!);
 
         osc.start(startTime);
-        osc.stop(startTime + 1.5);
+        osc.stop(startTime + 1.6);
       });
     } catch {}
   }

@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { soundEngine } from './SoundEngine';
+import type { SceneId } from '../types';
 
 export function useAudio() {
   const unlockAudio = useCallback(() => {
@@ -11,19 +12,35 @@ export function useAudio() {
   }, []);
 
   const startMusic = useCallback(() => {
-    soundEngine.startMusicLoop();
+    soundEngine.startMusic();
   }, []);
 
   const stopMusic = useCallback(() => {
-    soundEngine.stopMusicLoop();
+    soundEngine.stopMusic();
+  }, []);
+
+  const setScene = useCallback((scene: SceneId) => {
+    soundEngine.setScene(scene);
+  }, []);
+
+  const duckMusic = useCallback((duck: boolean) => {
+    soundEngine.duckMusic(duck);
   }, []);
 
   const playPop = useCallback(() => {
-    soundEngine.playCartoonPop();
+    soundEngine.playPop();
+  }, []);
+
+  const playFootstep = useCallback(() => {
+    soundEngine.playFootstep();
+  }, []);
+
+  const playCollect = useCallback(() => {
+    soundEngine.playCollect();
   }, []);
 
   const playGreeting = useCallback(() => {
-    soundEngine.playPipGreeting();
+    soundEngine.playGreeting();
   }, []);
 
   const playCandleBlow = useCallback(() => {
@@ -38,12 +55,12 @@ export function useAudio() {
     soundEngine.playScratchChime();
   }, []);
 
-  const playCardReveal = useCallback(() => {
-    soundEngine.playCardReveal();
-  }, []);
-
   const playFinaleFanfare = useCallback(() => {
     soundEngine.playFinaleFanfare();
+  }, []);
+
+  const playCardReveal = useCallback(() => {
+    soundEngine.playCollect();
   }, []);
 
   return {
@@ -51,12 +68,16 @@ export function useAudio() {
     setMuted,
     startMusic,
     stopMusic,
+    setScene,
+    duckMusic,
     playPop,
+    playFootstep,
+    playCollect,
+    playCardReveal,
     playGreeting,
     playCandleBlow,
     playPartyHorn,
     playScratchChime,
-    playCardReveal,
     playFinaleFanfare,
   };
 }
