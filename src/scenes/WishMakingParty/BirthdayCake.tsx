@@ -250,98 +250,130 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
                 <ellipse cx={candle.x} cy={candle.y - 7} rx="2" ry="1" fill="#38BDF8" opacity="0.8" />
               </g>
             ) : (
-              /* REALISTIC RISING CARTOON SMOKE (Curling puffs floating upward) */
-              <g className="pointer-events-none" style={{ transformOrigin: `${candle.x}px ${candle.y - 7}px` }}>
-                {/* Smoke Puff Left */}
-                <g className="animate-smoke-1">
+              /* REALISTIC RISING CARTOON SMOKE (Curling puffs floating from top of candlestick) */
+              <g className="pointer-events-none">
+                {/* Smoldering Ember right on top of the candlestick wick */}
+                <circle cx={candle.x} cy={candle.y - 6} r="1.5" fill="#EF4444" className="animate-pulse" />
+                <circle cx={candle.x} cy={candle.y - 6} r="3.5" fill="#F97316" opacity="0.4" className="animate-pulse" />
+
+                {/* Left Curling Smoke Plume */}
+                <g className="animate-smoke-1" style={{ transformOrigin: `${candle.x}px ${candle.y - 6}px` }}>
                   <path
-                    d={`M ${candle.x},${candle.y - 7} Q ${candle.x - 6},${candle.y - 20} ${candle.x - 2},${candle.y - 32} Q ${candle.x + 4},${candle.y - 44} ${candle.x - 8},${candle.y - 54}`}
+                    d={`M ${candle.x},${candle.y - 6} C ${candle.x - 6},${candle.y - 18} ${candle.x - 2},${candle.y - 30} ${candle.x - 8},${candle.y - 48} C ${candle.x - 14},${candle.y - 60} ${candle.x - 6},${candle.y - 70} ${candle.x - 12},${candle.y - 82}`}
                     stroke="#94A3B8"
                     strokeWidth="2.5"
                     fill="none"
                     strokeLinecap="round"
                     opacity="0.75"
                   />
-                  <circle cx={candle.x - 4} cy={candle.y - 30} r="4" fill="#CBD5E1" opacity="0.6" />
-                  <circle cx={candle.x - 7} cy={candle.y - 48} r="5" fill="#E2E8F0" opacity="0.4" />
+                  {/* Expanding translucent smoke puffs */}
+                  <circle cx={candle.x - 4} cy={candle.y - 25} r="3.5" fill="#CBD5E1" opacity="0.65" />
+                  <circle cx={candle.x - 8} cy={candle.y - 45} r="5" fill="#E2E8F0" opacity="0.5" />
+                  <circle cx={candle.x - 12} cy={candle.y - 68} r="6.5" fill="#F1F5F9" opacity="0.35" />
                 </g>
 
-                {/* Smoke Puff Right */}
-                <g className="animate-smoke-2">
+                {/* Right Curling Smoke Plume */}
+                <g className="animate-smoke-2" style={{ transformOrigin: `${candle.x}px ${candle.y - 6}px` }}>
                   <path
-                    d={`M ${candle.x + 1},${candle.y - 9} Q ${candle.x + 7},${candle.y - 22} ${candle.x + 2},${candle.y - 36} Q ${candle.x - 3},${candle.y - 48} ${candle.x + 9},${candle.y - 58}`}
+                    d={`M ${candle.x},${candle.y - 6} C ${candle.x + 6},${candle.y - 20} ${candle.x + 2},${candle.y - 34} ${candle.x + 8},${candle.y - 52} C ${candle.x + 14},${candle.y - 64} ${candle.x + 6},${candle.y - 74} ${candle.x + 10},${candle.y - 86}`}
                     stroke="#CBD5E1"
                     strokeWidth="2"
                     fill="none"
                     strokeLinecap="round"
                     opacity="0.65"
                   />
-                  <circle cx={candle.x + 5} cy={candle.y - 34} r="3.5" fill="#E2E8F0" opacity="0.5" />
+                  <circle cx={candle.x + 5} cy={candle.y - 28} r="3" fill="#E2E8F0" opacity="0.6" />
+                  <circle cx={candle.x + 9} cy={candle.y - 50} r="4.5" fill="#F1F5F9" opacity="0.45" />
+                  <circle cx={candle.x + 11} cy={candle.y - 72} r="6" fill="#FFFFFF" opacity="0.3" />
                 </g>
               </g>
             )}
           </g>
         ))}
 
-        {/* ================= AUTHENTIC CARTOON WIND GUST ANIMATION ================= */}
+        {/* ================= AUTHENTIC HUMAN BREATH / BLOWING BREEZE ANIMATION ================= */}
         {isBlowing && (
           <g className="pointer-events-none overflow-visible">
-            {/* Sweeping Center Gust with Spiraling Curl Vortex */}
+            {/* 1. Expanding Breath Funnel (Broad expanding cone of air from the person blowing) */}
             <path
-              d="M 110,310 C 120,230 140,160 160,90 C 172,48 188,25 174,12 C 160,0 142,15 152,32 C 160,45 178,40 185,28"
+              d="M 155,320 C 145,240 110,130 90,20 L 250,20 C 230,130 195,240 185,320 Z"
+              fill="url(#glazeGrad)"
+              opacity="0.08"
+            />
+
+            {/* 2. Concentric Sweeping Breath Ripples moving forward */}
+            <path
+              d="M 130,280 Q 170,250 210,280"
+              stroke="#BAE6FD"
+              strokeWidth="5"
               fill="none"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+              opacity="0.8"
+            />
+            <path
+              d="M 115,200 Q 170,165 225,200"
+              stroke="#FFFFFF"
+              strokeWidth="5.5"
+              fill="none"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+              opacity="0.9"
+            />
+            <path
+              d="M 95,110 Q 170,70 245,110"
               stroke="#7DD3FC"
-              strokeWidth="9"
+              strokeWidth="6"
+              fill="none"
               strokeLinecap="round"
               className="animate-cartoon-wind"
               opacity="0.85"
             />
-            {/* White Core Aerodynamic Highlight */}
+
+            {/* 3. Sweeping Central Gust Streams with Spiraling Swirl Vortices right over candles */}
             <path
-              d="M 110,310 C 120,230 140,160 160,90 C 172,48 188,25 174,12 C 160,0 142,15 152,32 C 160,45 178,40 185,28"
+              d="M 170,320 C 170,230 160,150 142,40 C 138,20 126,12 136,25 C 144,35 158,30 165,22"
+              fill="none"
+              stroke="#38BDF8"
+              strokeWidth="7"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+              opacity="0.9"
+            />
+            <path
+              d="M 170,320 C 170,230 180,150 198,40 C 202,20 214,12 204,25 C 196,35 182,30 175,22"
+              fill="none"
+              stroke="#38BDF8"
+              strokeWidth="7"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+              opacity="0.9"
+            />
+            {/* White Core Aerodynamic Streak */}
+            <path
+              d="M 170,320 C 170,220 170,130 170,15"
               fill="none"
               stroke="#FFFFFF"
-              strokeWidth="4"
+              strokeWidth="4.5"
               strokeLinecap="round"
               className="animate-cartoon-wind"
               opacity="0.95"
             />
 
-            {/* Left Flank Swirl Trail */}
-            <path
-              d="M 90,290 C 95,210 115,140 132,60 C 138,36 128,18 116,24 C 106,29 112,42 122,42"
-              fill="none"
-              stroke="#BAE6FD"
-              strokeWidth="6"
-              strokeLinecap="round"
-              className="animate-cartoon-wind"
-              opacity="0.75"
-            />
-
-            {/* Right Flank Swirl Trail */}
-            <path
-              d="M 230,290 C 225,210 205,140 188,60 C 182,36 194,18 206,24 C 216,29 210,42 200,42"
-              fill="none"
-              stroke="#BAE6FD"
-              strokeWidth="6"
-              strokeLinecap="round"
-              className="animate-cartoon-wind"
-              opacity="0.75"
-            />
-
-            {/* Billowing Translucent Cartoon Air Puff Clouds */}
+            {/* 4. Billowing Translucent Cartoon Air Puff Clouds drifting up */}
             <g className="animate-cartoon-puff">
-              <ellipse cx="150" cy="120" rx="18" ry="11" fill="#FFFFFF" opacity="0.85" />
-              <ellipse cx="165" cy="115" rx="14" ry="9" fill="#E0F2FE" opacity="0.8" />
-              <ellipse cx="138" cy="122" rx="12" ry="8" fill="#BAE6FD" opacity="0.7" />
+              <ellipse cx="170" cy="190" rx="22" ry="13" fill="#FFFFFF" opacity="0.8" />
+              <ellipse cx="185" cy="185" rx="16" ry="10" fill="#E0F2FE" opacity="0.75" />
+              <ellipse cx="155" cy="192" rx="15" ry="9" fill="#BAE6FD" opacity="0.7" />
             </g>
             <g className="animate-cartoon-puff" style={{ animationDelay: '0.12s' }}>
-              <ellipse cx="175" cy="70" rx="16" ry="10" fill="#FFFFFF" opacity="0.85" />
-              <ellipse cx="160" cy="65" rx="13" ry="8" fill="#E0F2FE" opacity="0.8" />
+              <ellipse cx="150" cy="110" rx="20" ry="12" fill="#FFFFFF" opacity="0.85" />
+              <ellipse cx="190" cy="105" rx="18" ry="11" fill="#E0F2FE" opacity="0.8" />
             </g>
-            <g className="animate-cartoon-puff" style={{ animationDelay: '0.2s' }}>
-              <ellipse cx="140" cy="35" rx="15" ry="9" fill="#FFFFFF" opacity="0.9" />
-              <ellipse cx="185" cy="38" rx="15" ry="9" fill="#E0F2FE" opacity="0.85" />
+            <g className="animate-cartoon-puff" style={{ animationDelay: '0.22s' }}>
+              <ellipse cx="140" cy="35" rx="18" ry="10" fill="#FFFFFF" opacity="0.9" />
+              <ellipse cx="170" cy="25" rx="20" ry="12" fill="#E0F2FE" opacity="0.85" />
+              <ellipse cx="200" cy="35" rx="18" ry="10" fill="#FFFFFF" opacity="0.9" />
             </g>
           </g>
         )}

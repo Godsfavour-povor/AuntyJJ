@@ -185,7 +185,7 @@ export const PipCharacter: React.FC<PipCharacterProps> = ({
         {/* Mouth */}
         {renderMouth()}
 
-        {/* Hands */}
+        {/* Hands & Arms */}
         {mood === 'pointing' ? (
           // Pointing hand gesture
           <g>
@@ -193,8 +193,22 @@ export const PipCharacter: React.FC<PipCharacterProps> = ({
             <path d="M 78,64 Q 92,54 96,62" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.5" strokeLinecap="round" />
           </g>
         ) : mood === 'wishing' ? (
-          // Clasped hands
-          <ellipse cx="50" cy="76" rx="7" ry="5" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.5" />
+          // Hands brought up covering / closing eyes while making a silent wish
+          <g>
+            {/* Left Arm reaching up to eye */}
+            <path d="M 24,68 C 18,54 26,46 35,45" fill="none" stroke="#1E1B4B" strokeWidth="3" strokeLinecap="round" />
+            <path d="M 24,68 C 18,54 26,46 35,45" fill="none" stroke="#FDE047" strokeWidth="2.2" strokeLinecap="round" />
+            {/* Left Hand over left eye */}
+            <ellipse cx="36" cy="45" rx="7" ry="5.5" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.2" transform="rotate(-15 36 45)" />
+            <line x1="33" y1="44" x2="38" y2="44" stroke="#1E1B4B" strokeWidth="1.5" strokeLinecap="round" />
+
+            {/* Right Arm reaching up to eye */}
+            <path d="M 76,68 C 82,54 74,46 65,45" fill="none" stroke="#1E1B4B" strokeWidth="3" strokeLinecap="round" />
+            <path d="M 76,68 C 82,54 74,46 65,45" fill="none" stroke="#FDE047" strokeWidth="2.2" strokeLinecap="round" />
+            {/* Right Hand over right eye */}
+            <ellipse cx="64" cy="45" rx="7" ry="5.5" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.2" transform="rotate(15 64 45)" />
+            <line x1="62" y1="44" x2="67" y2="44" stroke="#1E1B4B" strokeWidth="1.5" strokeLinecap="round" />
+          </g>
         ) : (
           // Normal little resting hands
           <g>

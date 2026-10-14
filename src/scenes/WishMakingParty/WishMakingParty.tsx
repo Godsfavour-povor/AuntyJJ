@@ -250,70 +250,45 @@ export const WishMakingParty: React.FC = () => {
             />
           </div>
 
-          {/* Cloud-Shaped Blowing Prompt at the SIDE (Only appears AFTER clicking 'Make a wish') */}
+          {/* Storybook Inscription (Tells her what to do with real-time breath meter) */}
           {isWishing && !allCandlesBlown && (
-            <div
-              onClick={handleSingleBlow}
-              className="absolute right-2 sm:right-6 top-1/4 z-30 cursor-pointer flex flex-col items-center transition-transform hover:scale-105 active:scale-95"
-              role="button"
-              tabIndex={0}
-              aria-label="Blow out candle"
-            >
-              {/* Cloud SVG Container with pointing tail */}
-              <div className="relative px-5 py-3.5 bg-white border-2 border-deep-ink rounded-[28px] shadow-[4px_4px_0px_#1E1B4B] flex items-center gap-3">
-                <div className="relative flex items-center justify-center">
-                  <Wind className="w-5 h-5 text-coral animate-pulse" />
-                  {micActive && (
-                    <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                  )}
+            <div className="absolute -top-12 sm:-top-8 z-30 pointer-events-none flex flex-col items-center animate-fade-in">
+              <div className="px-5 py-2.5 rounded-full bg-white/95 border-2 border-deep-ink shadow-[3px_3px_0px_#1E1B4B] flex items-center gap-3">
+                <Wind className="w-4 h-4 text-coral animate-pulse" />
+                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5">
+                  <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
+                    Take a deep breath & blow into your mic 🌬️
+                  </span>
+                  <span className="text-[10px] font-sans font-semibold text-coral">
+                    ({3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left)
+                  </span>
                 </div>
 
-                <div className="text-left">
-                  <div className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink flex items-center gap-1.5">
-                    <span>Blow Here! 🌬️</span>
-                    {micActive && <Mic className="w-3 h-3 text-emerald-600 inline" />}
-                  </div>
-
-                  <div className="text-[10px] font-sans font-medium text-deep-ink/70">
-                    {3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left
-                  </div>
-
-                  {/* Live Breath Meter Indicator */}
-                  {micActive && (
-                    <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden border border-deep-ink/20">
+                {/* Live Real-Time Breath Meter */}
+                {micActive && (
+                  <div className="flex items-center gap-1.5">
+                    <Mic className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                    <div className="w-16 sm:w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-deep-ink/20">
                       <div
                         className="h-full bg-gradient-to-r from-sky-400 to-coral transition-all duration-75 rounded-full"
                         style={{ width: `${breathIntensity}%` }}
                       />
                     </div>
-                  )}
-                </div>
-
-                {/* Cloud Tail Pointing toward the Cake */}
-                <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-b-2 border-l-2 border-deep-ink rotate-45" />
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Button Area */}
-        <div className="flex items-center justify-center w-full max-w-sm pt-2">
+        {/* Action Button Area (NO buttons while blowing — pure immersive physical interaction!) */}
+        <div className="flex items-center justify-center w-full max-w-sm pt-2 min-h-[50px]">
           {!isWishing && (
             <button
               onClick={handleStartWish}
               className="px-8 py-3.5 rounded-full bg-yellow hover:bg-yellow-dark text-deep-ink border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
             >
               Make A Wish ✨
-            </button>
-          )}
-
-          {isWishing && !allCandlesBlown && (
-            <button
-              onClick={handleSingleBlow}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
-            >
-              <Wind className="w-4 h-4" />
-              <span>Blow Candle ({3 - candlesBlownCount} Left) 🌬️</span>
             </button>
           )}
 
