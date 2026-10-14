@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Wind, ArrowRight } from 'lucide-react';
+import { Wind, Mic } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAdventure } from '../../context/AdventureContext';
 import { useAudio } from '../../audio/useAudio';
 import { BIRTHDAY_DATA } from '../../config/birthdayData';
 import { BirthdayCake } from './BirthdayCake';
+import { InfiniteFlowerShower } from './InfiniteFlowerShower';
 import { PipCharacter } from '../../components/Character/PipCharacter';
 import { SpeechBubble } from '../../components/SpeechBubble/SpeechBubble';
 
@@ -28,7 +29,12 @@ export const WishMakingParty: React.FC = () => {
     wishStage === 'candles_blown',
   ]);
   const [isBlowing, setIsBlowing] = useState<boolean>(false);
+  const [breathIntensity, setBreathIntensity] = useState<number>(0); // 0 to 100 for live breath meter
+  const [micActive, setMicActive] = useState<boolean>(false);
+
   const blowCooldownRef = useRef<boolean>(false);
+  const blowStreakRef = useRef<number>(0);
+  const animFrameRef = useRef<number | null>(null);
 
   const candlesBlownCount = blownCandles.filter(Boolean).length;
   const allCandlesBlown = candlesBlownCount === 3;
@@ -37,8 +43,9 @@ export const WishMakingParty: React.FC = () => {
   const handleSingleBlow = useCallback(() => {
     if (!isWishing || blowCooldownRef.current || allCandlesBlown) return;
     blowCooldownRef.current = true;
+    blowStreakRef.current = 0;
 
-    // Trigger physical facing wind gust from front
+    // Trigger authentic cartoon facing wind gust
     setIsBlowing(true);
     audio.playCandleBlow();
 
@@ -57,69 +64,128 @@ export const WishMakingParty: React.FC = () => {
           setCharacterMood('celebrating');
           audio.playPartyHorn();
 
-          // Gentle celebratory confetti
+          // Celebratory floral burst from the top
           confetti({
-            particleCount: 70,
-            spread: 75,
-            origin: { y: 0.65 },
-            colors: ['#FB7185', '#38BDF8', '#2DD4BF', '#FDE047', '#C084FC'],
+            particleCount: 85,
+            spread: 90,
+            origin: { y: 0.15 },
+            colors: ['#FDA4AF', '#FDE047', '#38BDF8', '#C084FC', '#4ADE80'],
             disableForReducedMotion: true,
           });
         }
         return next;
       });
 
-      // Pacing cooldown: allows sister to catch breath between candles
+      // Measured pacing cooldown: allows sister to catch her breath for the next candle
       setTimeout(() => {
         blowCooldownRef.current = false;
-      }, 700);
-    }, 450);
+        blowStreakRef.current = 0;
+      }, 1100);
+    }, 550);
   }, [isWishing, allCandlesBlown, extinguishCandles, setCharacterMood, audio]);
 
-  // Background microphone air puff detection while in 'wishing' mode
+  // High-precision microphone breath puff detector with ambient calibration & turbulence filter
   useEffect(() => {
     if (!isWishing || allCandlesBlown) return;
+
     let stream: MediaStream | null = null;
     let audioCtx: AudioContext | null = null;
+    let isCancelled = false;
 
     const startMic = async () => {
       try {
         if (!navigator.mediaDevices?.getUserMedia) return;
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (isCancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
         audioCtx = new AudioCtx();
         const analyser = audioCtx.createAnalyser();
         const source = audioCtx.createMediaStreamSource(stream);
-        analyser.smoothingTimeConstant = 0.2;
+
+        analyser.smoothingTimeConstant = 0.25;
         analyser.fftSize = 256;
         source.connect(analyser);
 
+        setMicActive(true);
         const data = new Uint8Array(analyser.frequencyBinCount);
 
-        const poll = () => {
-          if (allCandlesBlown) return;
-          analyser.getByteFrequencyData(data);
-          let sum = 0;
-          for (let i = 0; i < data.length; i++) sum += data[i];
-          const avg = sum / data.length;
+        let calibrationFrames = 0;
+        let baselineSum = 0;
+        let baselineNoise = 35; // Default safe baseline
 
-          // Breath sound threshold
-          if (avg > 38 && !blowCooldownRef.current) {
-            handleSingleBlow();
+        const poll = () => {
+          if (isCancelled || allCandlesBlown) return;
+
+          analyser.getByteFrequencyData(data);
+
+          // 1. Calculate low-frequency wind turbulence energy (bins 1 to 12, ~20Hz-250Hz)
+          let lowFreqSum = 0;
+          for (let i = 1; i <= 12; i++) {
+            lowFreqSum += data[i];
           }
-          requestAnimationFrame(poll);
+          const lowFreqEnergy = lowFreqSum / 12;
+
+          // 2. Calculate broadband volume
+          let totalSum = 0;
+          for (let i = 0; i < 64; i++) {
+            totalSum += data[i];
+          }
+          const totalEnergy = totalSum / 64;
+
+          // 3. Calibration phase (first 50 frames ~800ms to adapt to room noise and mic gain)
+          if (calibrationFrames < 50) {
+            baselineSum += totalEnergy;
+            calibrationFrames++;
+            if (calibrationFrames === 50) {
+              baselineNoise = Math.max(25, baselineSum / 50);
+            }
+            animFrameRef.current = requestAnimationFrame(poll);
+            return;
+          }
+
+          // 4. Compute reactive breath meter (0 to 100%)
+          const dynamicThreshold = Math.max(85, baselineNoise + 40);
+          const rawRatio = Math.max(0, (totalEnergy - baselineNoise) / (dynamicThreshold - baselineNoise));
+          const visualPercent = Math.min(100, Math.round(rawRatio * 100));
+          setBreathIntensity(visualPercent);
+
+          // 5. Authentic breath signature:
+          // Low frequency air displacement > 95 AND total energy exceeds dynamic threshold
+          const isBreathDetected = lowFreqEnergy > 95 && totalEnergy > dynamicThreshold;
+
+          if (isBreathDetected && !blowCooldownRef.current) {
+            blowStreakRef.current += 1;
+            // Require sustained breath over 4 consecutive animation frames (~70ms) to reject quick noises/clicks
+            if (blowStreakRef.current >= 4) {
+              handleSingleBlow();
+            }
+          } else {
+            blowStreakRef.current = Math.max(0, blowStreakRef.current - 1);
+          }
+
+          animFrameRef.current = requestAnimationFrame(poll);
         };
-        requestAnimationFrame(poll);
+
+        animFrameRef.current = requestAnimationFrame(poll);
       } catch {
-        // Fallback to tap
+        // Fallback gracefully to click/tap if mic permission is denied
+        setMicActive(false);
       }
     };
 
     startMic();
 
     return () => {
+      isCancelled = true;
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (stream) stream.getTracks().forEach((t) => t.stop());
       if (audioCtx) audioCtx.close().catch(() => {});
+      setBreathIntensity(0);
+      setMicActive(false);
     };
   }, [isWishing, allCandlesBlown, handleSingleBlow]);
 
@@ -133,7 +199,10 @@ export const WishMakingParty: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden bg-gradient-to-b from-[#FEF3C7] via-[#FFFDF8] to-[#FDF4FF] select-none">
-      {/* Top Header (Clean, chapter badge removed) */}
+      {/* Infinite Flower Burst Shower from the top once all candles are blown */}
+      {allCandlesBlown && <InfiniteFlowerShower />}
+
+      {/* Top Header */}
       <header className="relative z-10 text-center max-w-lg mt-12 sm:mt-10 space-y-1">
         <h1 className="text-2xl sm:text-4xl font-display font-bold text-deep-ink tracking-tight">
           Happy Birthday, {BIRTHDAY_DATA.sisterName}!
@@ -172,7 +241,7 @@ export const WishMakingParty: React.FC = () => {
             <PipCharacter mood={characterMood} size={110} />
           </div>
 
-          {/* Redesigned 3-Deck Cake */}
+          {/* Redesigned Gourmet 3-Deck Cake */}
           <div className="z-10 relative">
             <BirthdayCake
               blownCandles={blownCandles}
@@ -186,17 +255,38 @@ export const WishMakingParty: React.FC = () => {
             <div
               onClick={handleSingleBlow}
               className="absolute right-2 sm:right-6 top-1/4 z-30 cursor-pointer flex flex-col items-center transition-transform hover:scale-105 active:scale-95"
+              role="button"
+              tabIndex={0}
+              aria-label="Blow out candle"
             >
               {/* Cloud SVG Container with pointing tail */}
-              <div className="relative px-5 py-3.5 bg-white border-2 border-deep-ink rounded-[28px] shadow-[4px_4px_0px_#1E1B4B] flex items-center gap-2">
-                <Wind className="w-5 h-5 text-coral animate-pulse" />
+              <div className="relative px-5 py-3.5 bg-white border-2 border-deep-ink rounded-[28px] shadow-[4px_4px_0px_#1E1B4B] flex items-center gap-3">
+                <div className="relative flex items-center justify-center">
+                  <Wind className="w-5 h-5 text-coral animate-pulse" />
+                  {micActive && (
+                    <span className="absolute -bottom-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  )}
+                </div>
+
                 <div className="text-left">
-                  <div className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
-                    Blow Here! 🌬️
+                  <div className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink flex items-center gap-1.5">
+                    <span>Blow Here! 🌬️</span>
+                    {micActive && <Mic className="w-3 h-3 text-emerald-600 inline" />}
                   </div>
+
                   <div className="text-[10px] font-sans font-medium text-deep-ink/70">
                     {3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left
                   </div>
+
+                  {/* Live Breath Meter Indicator */}
+                  {micActive && (
+                    <div className="w-24 h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden border border-deep-ink/20">
+                      <div
+                        className="h-full bg-gradient-to-r from-sky-400 to-coral transition-all duration-75 rounded-full"
+                        style={{ width: `${breathIntensity}%` }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Cloud Tail Pointing toward the Cake */}
@@ -206,7 +296,7 @@ export const WishMakingParty: React.FC = () => {
           )}
         </div>
 
-        {/* Single Action Button Area */}
+        {/* Action Button Area */}
         <div className="flex items-center justify-center w-full max-w-sm pt-2">
           {!isWishing && (
             <button
@@ -228,23 +318,20 @@ export const WishMakingParty: React.FC = () => {
           )}
 
           {allCandlesBlown && (
-            /* Exactly ONE button: Continue */
+            /* Exactly ONE arrow as requested */
             <button
               onClick={() => goToScene('scene_3_discovery')}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
+              className="flex items-center justify-center px-8 py-3.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-sm tracking-wider uppercase shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
             >
               <span>Continue ➔</span>
-              <ArrowRight className="w-4 h-4" />
             </button>
           )}
         </div>
       </main>
 
-      {/* Clean Footer */}
-      <footer className="relative z-10 text-center mb-4">
-        <p className="text-xs font-sans font-medium text-deep-ink/50 tracking-wider">
-          {allCandlesBlown ? 'All candles blown out!' : isWishing ? 'Blow gently into your microphone or tap to extinguish each candle' : ''}
-        </p>
+      {/* Clean Footer (Bottom text 'all candle blown out' removed completely) */}
+      <footer className="relative z-10 text-center mb-4 min-h-[1.25rem]">
+        {/* Clean, empty footer spacing */}
       </footer>
     </div>
   );
