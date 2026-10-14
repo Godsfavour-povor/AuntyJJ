@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import confetti from 'canvas-confetti';
-import { Camera, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useAudio } from '../../audio/useAudio';
 
 export interface PresentItem {
@@ -32,7 +32,7 @@ const getCardBg = (boxColor: string) => {
 
 export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClose }) => {
   const audio = useAudio();
-  const [photoUrl, setPhotoUrl] = useState<string>(present.photoUrl);
+  const [photoUrl] = useState<string>(present.photoUrl);
   const [isDone, setIsDone] = useState<boolean>(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
@@ -60,7 +60,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
     gsap.set(giftBoxWrapperRef.current, {
       x: startDeltaX,
       y: startDeltaY,
-      scale: 0.22,
+      scale: 0.25,
       rotationY: -25,
       rotationX: 15,
       opacity: 1,
@@ -75,6 +75,8 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
     });
 
     if (hintTextRef.current) {
+      hintTextRef.current.style.display = 'block';
+      hintTextRef.current.style.opacity = '1';
       hintTextRef.current.textContent = '✨ Bringing your present out of the room...';
     }
 
@@ -82,11 +84,11 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
 
     const tl = gsap.timeline();
 
-    // 1. Slow & steady emergence from apartment floor to center screen (1.65s, power2.inOut)
+    // 1. Slow & steady emergence of large 3D gift box to center screen (1.65s, power2.inOut)
     tl.to(giftBoxWrapperRef.current, {
       x: 0,
-      y: 20,
-      scale: 1.12,
+      y: 10,
+      scale: 1.4,
       rotationY: 0,
       rotationX: 0,
       duration: 1.65,
@@ -94,7 +96,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
     })
       .to(
         presentGlowRef.current,
-        { opacity: 0.65, scale: 1.25, duration: 1.4, ease: 'power1.out' },
+        { opacity: 0.75, scale: 1.4, duration: 1.4, ease: 'power1.out' },
         '-=1.2'
       )
 
@@ -106,7 +108,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       })
       .to(giftBoxWrapperRef.current, {
         rotationZ: -4,
-        scale: 1.16,
+        scale: 1.45,
         duration: 0.28,
         ease: 'sine.inOut',
       })
@@ -114,7 +116,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       .to(giftBoxWrapperRef.current, { rotationZ: -2.5, duration: 0.24, ease: 'sine.inOut' })
       .to(giftBoxWrapperRef.current, {
         rotationZ: 0,
-        scale: 1.14,
+        scale: 1.42,
         duration: 0.25,
         ease: 'sine.inOut',
       })
@@ -128,16 +130,16 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       })
       .to(boxInnerLightRef.current, {
         opacity: 0.95,
-        scale: 1.85,
+        scale: 2.2,
         duration: 1.2,
         ease: 'power2.out',
       })
       .to(
         giftBoxLidRef.current,
         {
-          y: -135,
-          x: 48,
-          rotationZ: 22,
+          y: -160,
+          x: 60,
+          rotationZ: 24,
           rotationX: 35,
           opacity: 0,
           duration: 1.8,
@@ -146,14 +148,28 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
         '-=1.0'
       )
 
-      // 4. Keepsake card rises slowly out of the box while box settles downward (2.2s)
+      // 4. As the main picture comes out, remove the status pill completely
+      .to(
+        hintTextRef.current,
+        {
+          opacity: 0,
+          y: -20,
+          duration: 0.5,
+          ease: 'power2.in',
+          onComplete: () => {
+            if (hintTextRef.current) {
+              hintTextRef.current.style.display = 'none';
+            }
+          },
+        },
+        '-=1.2'
+      )
+
+      // Keepsake photo card rises slowly out of the box while box settles downward (2.2s)
       .call(() => {
-        if (hintTextRef.current) {
-          hintTextRef.current.textContent = '💝 A special birthday memory for you!';
-        }
         confetti({
-          particleCount: 55,
-          spread: 65,
+          particleCount: 65,
+          spread: 70,
           origin: { y: 0.55 },
           colors: ['#FF6B8B', '#FBBF24', '#2DD4BF', '#F472B6', '#FFFFFF'],
         });
@@ -161,9 +177,9 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       .to(
         giftBoxWrapperRef.current,
         {
-          y: 230,
-          scale: 0.78,
-          opacity: 0.18,
+          y: 260,
+          scale: 0.65,
+          opacity: 0.1,
           duration: 2.1,
           ease: 'power2.inOut',
         },
@@ -192,19 +208,6 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [present.id]);
 
-  // Handle uploading/customizing the memory photo
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (typeof ev.target?.result === 'string') {
-        setPhotoUrl(ev.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleCollect = () => {
     audio.playCollect();
     onClose(present.id, photoUrl);
@@ -222,15 +225,15 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       {/* Ambient Radial Glow matching the box color */}
       <div
         ref={presentGlowRef}
-        className="w-[520px] h-[520px] rounded-full blur-3xl absolute pointer-events-none opacity-0"
+        className="w-[600px] h-[600px] rounded-full blur-3xl absolute pointer-events-none opacity-0"
         style={{
           backgroundColor: present.boxColor,
-          filter: 'blur(90px)',
+          filter: 'blur(100px)',
         }}
       />
 
-      <div className="relative w-full max-w-lg flex flex-col items-center justify-center min-h-[500px]">
-        {/* Step Status Pill using direct ref */}
+      <div className="relative w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
+        {/* Step Status Pill using direct ref (visible only while box is opening, removed when picture appears) */}
         <div
           ref={hintTextRef}
           className="px-4 py-1.5 rounded-full bg-white border-[3px] border-deep-ink shadow-[3px_3px_0px_#1E1B4B] text-xs font-display font-extrabold uppercase tracking-wider text-deep-ink mb-6 z-30 animate-fade-in"
@@ -240,56 +243,46 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
 
         {/* 3D Gift Box Stage */}
         <div
-          className="relative w-56 h-56 flex items-center justify-center"
+          className="relative w-72 sm:w-80 h-72 sm:h-80 flex items-center justify-center"
           style={{ transformStyle: 'preserve-3d' }}
         >
-          {/* RISING KEEPSAKE CARD (Background matches the color of the box!) */}
+          {/* RISING KEEPSAKE CARD: Occupies exact width of the actual photo! */}
           <div
             ref={presentCardRef}
-            className={`w-[90vw] max-w-sm sm:max-w-md border-[3.5px] border-deep-ink shadow-[8px_8px_0px_#1E1B4B] rounded-3xl p-4 sm:p-5 flex flex-col items-center text-center z-20 ${
+            className={`w-fit max-w-[94vw] max-h-[92vh] border-[4px] border-deep-ink shadow-[10px_10px_0px_#1E1B4B] rounded-3xl p-4 sm:p-6 flex flex-col items-center text-center z-20 ${
               isDone ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             style={{
               backgroundColor: getCardBg(present.boxColor),
             }}
           >
-            {/* Custom Photo Frame: object-contain, fits viewport without cutoff */}
-            <div className="w-full max-h-[50vh] sm:max-h-[52vh] rounded-2xl border-[3px] border-deep-ink overflow-hidden relative bg-black/5 mb-2.5 group flex items-center justify-center shadow-inner">
+            {/* Custom Photo Frame: hugs photo's exact dimensions with no letterboxing */}
+            <div className="relative rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-black/5 shadow-inner flex items-center justify-center mb-3">
               <img
                 src={photoUrl}
                 alt={present.title}
-                className="w-full max-h-[50vh] sm:max-h-[52vh] object-contain rounded-xl"
+                className="max-h-[64vh] sm:max-h-[70vh] max-w-[88vw] w-auto h-auto object-contain block rounded-xl"
               />
-              <label className="absolute bottom-2 right-2 px-3 py-1 rounded-full bg-white/95 hover:bg-white text-deep-ink border-2 border-deep-ink text-[11px] font-display font-extrabold cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_0px_#1E1B4B] active:scale-95 transition-transform pointer-events-auto">
-                <Camera className="w-3.5 h-3.5 text-coral" />
-                <span>Change Photo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-              </label>
             </div>
 
-            {/* Just beneath the picture with the handwriting stuff: single line */}
+            {/* Just beneath the picture with the handwriting stuff: spans exact width */}
             <div className="w-full py-1">
-              <p className="font-handwritten text-3xl sm:text-4xl font-bold text-coral text-center tracking-wide leading-tight">
+              <p className="font-handwritten text-3xl sm:text-4xl md:text-5xl font-bold text-coral text-center tracking-wide leading-tight">
                 {present.message}
               </p>
             </div>
 
-            {/* Action Button: Keep Memory & Continue Exploring */}
+            {/* Action Button: spans exact width of the photo */}
             <button
               onClick={handleCollect}
-              className="w-full py-3 mt-2.5 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3px] border-deep-ink font-display font-extrabold text-xs sm:text-sm uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
+              className="w-full py-3.5 mt-2.5 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3.5px] border-deep-ink font-display font-extrabold text-sm sm:text-base uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-5 h-5" />
               <span>Keep Memory &amp; Continue Exploring ✨</span>
             </button>
           </div>
 
-          {/* THE 3D GIFT BOX WRAPPER */}
+          {/* THE 3D GIFT BOX WRAPPER (Bigger, bolder dimensions) */}
           <div
             ref={giftBoxWrapperRef}
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
@@ -298,39 +291,39 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             {/* Inner Golden Light Burst */}
             <div
               ref={boxInnerLightRef}
-              className="w-36 h-36 rounded-full bg-amber-300 blur-xl absolute opacity-0"
+              className="w-48 h-48 rounded-full bg-amber-300 blur-2xl absolute opacity-0"
             />
 
             {/* Gift Box Lid (Lifts & Tilts off slowly in 3D) */}
             <div
               ref={giftBoxLidRef}
-              className="w-48 h-12 relative z-20 flex flex-col items-center"
+              className="w-64 sm:w-72 h-16 relative z-20 flex flex-col items-center"
             >
               {/* Ribbon Bow on Top */}
-              <div className="w-20 h-8 -mb-1 flex items-center justify-center relative">
-                <div className="w-9 h-7 rounded-full border-[3.5px] border-deep-ink bg-yellow -rotate-12 -mr-1" />
-                <div className="w-9 h-7 rounded-full border-[3.5px] border-deep-ink bg-yellow rotate-12 -ml-1" />
-                <div className="w-5 h-5 rounded-full border-[3px] border-deep-ink bg-amber-500 absolute" />
+              <div className="w-28 h-10 -mb-1 flex items-center justify-center relative">
+                <div className="w-12 h-9 rounded-full border-[3.5px] border-deep-ink bg-yellow -rotate-12 -mr-1" />
+                <div className="w-12 h-9 rounded-full border-[3.5px] border-deep-ink bg-yellow rotate-12 -ml-1" />
+                <div className="w-7 h-7 rounded-full border-[3px] border-deep-ink bg-amber-500 absolute" />
               </div>
               {/* Lid Rim */}
               <div
-                className="w-48 h-9 border-[3.5px] border-deep-ink rounded-xl shadow-md relative flex justify-center overflow-hidden"
+                className="w-64 sm:w-72 h-12 border-[3.5px] border-deep-ink rounded-xl shadow-md relative flex justify-center overflow-hidden"
                 style={{ backgroundColor: present.boxColor }}
               >
-                <div className="w-8 h-full bg-yellow border-x-[2.5px] border-deep-ink" />
+                <div className="w-10 h-full bg-yellow border-x-[2.5px] border-deep-ink" />
               </div>
             </div>
 
             {/* Gift Box Base */}
             <div
-              className="w-44 h-36 border-[3.5px] border-t-0 border-deep-ink rounded-b-2xl shadow-[0_12px_0px_#1E1B4B] relative flex justify-center overflow-hidden -mt-0.5 z-10"
+              className="w-60 sm:w-64 h-48 border-[3.5px] border-t-0 border-deep-ink rounded-b-2xl shadow-[0_14px_0px_#1E1B4B] relative flex justify-center overflow-hidden -mt-0.5 z-10"
               style={{ backgroundColor: present.boxColor }}
             >
               {/* Vertical Ribbon */}
-              <div className="w-8 h-full bg-yellow border-x-[2.5px] border-deep-ink" />
+              <div className="w-10 h-full bg-yellow border-x-[2.5px] border-deep-ink" />
               {/* Polka dot highlight shine */}
-              <div className="w-3 h-3 rounded-full bg-white/40 absolute top-4 left-5" />
-              <div className="w-4 h-4 rounded-full bg-white/40 absolute bottom-6 right-5" />
+              <div className="w-4 h-4 rounded-full bg-white/40 absolute top-5 left-6" />
+              <div className="w-5 h-5 rounded-full bg-white/40 absolute bottom-8 right-6" />
             </div>
           </div>
         </div>
