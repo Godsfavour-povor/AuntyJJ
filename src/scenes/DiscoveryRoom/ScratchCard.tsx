@@ -6,12 +6,14 @@ interface ScratchCardProps {
   onCompleted: () => void;
   isCompleted: boolean;
   children: React.ReactNode;
+  containerClassName?: string;
 }
 
 export const ScratchCard: React.FC<ScratchCardProps> = ({
   onCompleted,
   isCompleted,
   children,
+  containerClassName,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -216,7 +218,10 @@ export const ScratchCard: React.FC<ScratchCardProps> = ({
     <div className="flex flex-col items-center w-full max-w-md mx-auto select-none">
       <div
         ref={containerRef}
-        className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-[6px_6px_0px_#1E1B4B] border-[3px] border-deep-ink bg-white"
+        className={
+          containerClassName ||
+          "relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-[6px_6px_0px_#1E1B4B] border-[3px] border-deep-ink bg-white"
+        }
       >
         {/* Revealed Secret Card Content */}
         <div className="absolute inset-0 p-6 flex flex-col justify-between">
