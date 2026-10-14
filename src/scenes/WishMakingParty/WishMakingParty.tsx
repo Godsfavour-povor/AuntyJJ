@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Wind, Mic } from 'lucide-react';
+import { Wind } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useAdventure } from '../../context/AdventureContext';
 import { useAudio } from '../../audio/useAudio';
@@ -36,6 +36,12 @@ export const WishMakingParty: React.FC = () => {
   const blowStreakRef = useRef<number>(0);
   const animFrameRef = useRef<number | null>(null);
 
+  // Phone tilt orientation refs
+  const initialBetaRef = useRef<number | null>(null);
+  const lastBetaRef = useRef<number | null>(null);
+  const lastOrientationTimeRef = useRef<number>(0);
+  const micStreamRef = useRef<MediaStream | null>(null);
+
   const candlesBlownCount = blownCandles.filter(Boolean).length;
   const allCandlesBlown = candlesBlownCount === 3;
 
@@ -45,7 +51,7 @@ export const WishMakingParty: React.FC = () => {
     blowCooldownRef.current = true;
     blowStreakRef.current = 0;
 
-    // Trigger authentic cartoon facing wind gust
+    // Trigger authentic cartoon facing wind gust (950ms duration)
     setIsBlowing(true);
     audio.playCandleBlow();
 
@@ -66,8 +72,8 @@ export const WishMakingParty: React.FC = () => {
 
           // Celebratory floral burst from the top
           confetti({
-            particleCount: 85,
-            spread: 90,
+            particleCount: 90,
+            spread: 95,
             origin: { y: 0.15 },
             colors: ['#FDA4AF', '#FDE047', '#38BDF8', '#C084FC', '#4ADE80'],
             disableForReducedMotion: true,
@@ -81,33 +87,78 @@ export const WishMakingParty: React.FC = () => {
         blowCooldownRef.current = false;
         blowStreakRef.current = 0;
       }, 1100);
-    }, 550);
+    }, 950);
   }, [isWishing, allCandlesBlown, extinguishCandles, setCharacterMood, audio]);
+
+  // Phone tilt detection: when user tilts top of phone toward their mouth/face
+  useEffect(() => {
+    if (!isWishing || allCandlesBlown) return;
+
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (e.beta === null || blowCooldownRef.current || allCandlesBlown) return;
+
+      const beta = e.beta;
+      const now = performance.now();
+
+      // Establish initial baseline on first reading
+      if (lastBetaRef.current === null) {
+        lastBetaRef.current = beta;
+        initialBetaRef.current = beta;
+        lastOrientationTimeRef.current = now;
+        return;
+      }
+
+      const dt = Math.max(1, now - lastOrientationTimeRef.current);
+      const deltaBeta = beta - lastBetaRef.current;
+      const angularSpeed = Math.abs(deltaBeta) / dt;
+
+      const initial = initialBetaRef.current ?? 75;
+
+      // Detect tilting top of phone forward towards face to blow
+      const isTiltedForward = (initial > 50 && beta < 45) || (beta - initial < -15) || Math.abs(beta - initial) > 22;
+      const isTiltMotion = Math.abs(deltaBeta) > 14 || angularSpeed > 0.08;
+
+      if ((isTiltedForward || isTiltMotion) && !blowCooldownRef.current) {
+        handleSingleBlow();
+        initialBetaRef.current = beta;
+      }
+
+      lastBetaRef.current = beta;
+      lastOrientationTimeRef.current = now;
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation);
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      initialBetaRef.current = null;
+      lastBetaRef.current = null;
+    };
+  }, [isWishing, allCandlesBlown, handleSingleBlow]);
 
   // High-precision microphone breath puff detector with ambient calibration & turbulence filter
   useEffect(() => {
     if (!isWishing || allCandlesBlown) return;
 
-    let stream: MediaStream | null = null;
+    let stream: MediaStream | null = micStreamRef.current;
     let audioCtx: AudioContext | null = null;
     let isCancelled = false;
 
     const startMic = async () => {
       try {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setMicActive(false);
-          return;
-        }
+        if (!stream) {
+          if (!navigator.mediaDevices?.getUserMedia) {
+            setMicActive(false);
+            return;
+          }
 
-        // CRITICAL: Disable browser noiseSuppression and echoCancellation, which
-        // aggressively treat human breath/blowing as unwanted background wind noise!
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false,
-          },
-        });
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+          });
+        }
 
         if (isCancelled) {
           stream.getTracks().forEach((t) => t.stop());
@@ -162,7 +213,6 @@ export const WishMakingParty: React.FC = () => {
           // Detect sustained physical breath
           if (avgDeviation > dynamicThreshold && !blowCooldownRef.current) {
             blowStreakRef.current += 1;
-            // 2-3 consecutive frames (~40ms) confirms actual breath
             if (blowStreakRef.current >= 2) {
               handleSingleBlow();
             }
@@ -175,7 +225,6 @@ export const WishMakingParty: React.FC = () => {
 
         animFrameRef.current = requestAnimationFrame(poll);
       } catch {
-        // Fallback gracefully if microphone permission is denied or unsupported
         setMicActive(false);
       }
     };
@@ -192,8 +241,33 @@ export const WishMakingParty: React.FC = () => {
     };
   }, [isWishing, allCandlesBlown, handleSingleBlow]);
 
-  // Click on "Make a wish"
-  const handleStartWish = () => {
+  // Click on "Make a wish": request permissions directly in user gesture
+  const handleStartWish = async () => {
+    // 1. Request iOS Safari DeviceOrientation permission directly in user tap
+    if (typeof (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }).requestPermission === 'function') {
+      try {
+        await (DeviceOrientationEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission();
+      } catch (err) {
+        console.warn('Orientation permission notice:', err);
+      }
+    }
+
+    // 2. Request microphone stream directly in user tap
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+          },
+        });
+        micStreamRef.current = stream;
+      } catch (err) {
+        console.warn('Microphone permission notice:', err);
+      }
+    }
+
     setIsWishing(true);
     setCharacterMood('wishing');
     audio.duckMusic(true);
@@ -237,11 +311,11 @@ export const WishMakingParty: React.FC = () => {
           )}
         </SpeechBubble>
 
-        {/* Cake Composition with Cloud Blow Indicator on the SIDE */}
-        <div className="relative flex items-center justify-center w-full">
+        {/* Cake Composition with Cloud Blow Indicator on the RIGHT-HAND SIDE */}
+        <div className="relative flex items-center justify-center w-full max-w-2xl mx-auto">
           {/* Pip The Mascot on Left */}
-          <div className="hidden sm:block absolute left-4 bottom-2 z-20">
-            <PipCharacter mood={characterMood} size={110} />
+          <div className="hidden md:block absolute -left-8 lg:-left-16 bottom-4 z-20">
+            <PipCharacter mood={characterMood} size={115} />
           </div>
 
           {/* Redesigned Gourmet 3-Deck Cake */}
@@ -253,40 +327,54 @@ export const WishMakingParty: React.FC = () => {
             />
           </div>
 
-          {/* Storybook Inscription (Tells her what to do with real-time breath meter & tap fallback) */}
+          {/* Cloud-Shaped Inscription on the RIGHT-HAND SIDE pointing to the cake */}
           {isWishing && !allCandlesBlown && (
             <div
               onClick={handleSingleBlow}
-              className="absolute -top-12 sm:-top-8 z-30 flex flex-col items-center animate-fade-in cursor-pointer select-none"
-              title="Blow into your microphone or tap to extinguish!"
+              className="absolute right-0 sm:-right-4 md:-right-16 lg:-right-24 top-2 sm:top-6 z-30 flex flex-col items-center cursor-pointer select-none animate-comic-pop"
+              title="Blow the candle! Tilt phone or blow into mic"
             >
-              <div className="px-5 py-2.5 rounded-full bg-white/95 border-2 border-deep-ink shadow-[3px_3px_0px_#1E1B4B] flex items-center gap-3 hover:scale-105 active:scale-95 transition-transform">
-                <Wind className="w-4 h-4 text-coral animate-pulse" />
-                <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2.5">
-                  <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
-                    {micActive ? "Blow into your mic or tap cake 🌬️" : "Blow into your mic or tap cake 🌬️"}
-                  </span>
-                  <span className="text-[10px] font-sans font-semibold text-coral">
-                    ({3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left)
+              {/* Cloud Bubble Container */}
+              <div className="relative bg-white/95 backdrop-blur-md border-2 border-deep-ink px-4 py-3 sm:px-5 sm:py-3.5 rounded-[2rem] shadow-[4px_4px_0px_#1E1B4B] hover:scale-105 active:scale-95 transition-transform flex flex-col items-center text-center max-w-[145px] sm:max-w-[180px]">
+                
+                {/* Whimsical Cloud Puffs Lobes on Top Edge */}
+                <div className="absolute -top-3 left-4 w-7 h-7 bg-white rounded-full border-t-2 border-l-2 border-deep-ink pointer-events-none" />
+                <div className="absolute -top-4 right-5 w-8 h-8 bg-white rounded-full border-t-2 border-r-2 border-deep-ink pointer-events-none" />
+
+                {/* Cloud Main Heading */}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <Wind className="w-4 h-4 text-sky-dark animate-pulse" />
+                  <span className="font-display font-bold text-xs sm:text-sm text-deep-ink leading-tight">
+                    Blow the candle! 🌬️
                   </span>
                 </div>
 
-                {/* Live Real-Time Breath Meter */}
-                {micActive ? (
-                  <div className="flex items-center gap-1.5" title="Live Microphone Breath Sensor">
-                    <Mic className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-                    <div className="w-16 sm:w-20 h-2 bg-slate-100 rounded-full overflow-hidden border border-deep-ink/20">
-                      <div
-                        className="h-full bg-gradient-to-r from-sky-400 to-coral transition-all duration-75 rounded-full"
-                        style={{ width: `${Math.max(5, breathIntensity)}%` }}
-                      />
-                    </div>
+                {/* Subtitle with intuitive instructions */}
+                <p className="font-sans text-[10px] sm:text-xs font-semibold text-deep-ink/70 leading-tight">
+                  Tilt phone or blow
+                </p>
+
+                {/* Candle Counter Badge */}
+                <span className="mt-1.5 text-[10px] font-display font-bold text-coral bg-rose-50 px-2.5 py-0.5 rounded-full border border-coral/30">
+                  {3 - candlesBlownCount} candle{3 - candlesBlownCount > 1 ? 's' : ''} left
+                </span>
+
+                {/* Live breath feedback indicator */}
+                {micActive && breathIntensity > 10 && (
+                  <div className="w-full h-1 bg-sky-100 rounded-full overflow-hidden mt-1.5 border border-sky-200">
+                    <div
+                      className="h-full bg-gradient-to-r from-sky-400 to-coral transition-all duration-75 rounded-full"
+                      style={{ width: `${breathIntensity}%` }}
+                    />
                   </div>
-                ) : (
-                  <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    Tap Ready ✨
-                  </span>
                 )}
+
+                {/* Cloud Tail Pointing Left Directly Towards the Cake Candles */}
+                <div className="absolute -bottom-1 -left-3.5 flex items-center pointer-events-none">
+                  <div className="w-3.5 h-3.5 bg-white rounded-full border-2 border-deep-ink shadow-[-1px_1px_0px_#1E1B4B]" />
+                  <div className="w-2.5 h-2.5 bg-white rounded-full border-2 border-deep-ink -ml-1 -mt-1.5" />
+                  <div className="w-1.5 h-1.5 bg-white rounded-full border border-deep-ink -ml-0.5 -mt-3" />
+                </div>
               </div>
             </div>
           )}

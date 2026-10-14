@@ -291,48 +291,41 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
           </g>
         ))}
 
-        {/* ================= AUTHENTIC HUMAN BREATH / BLOWING BREEZE ANIMATION ================= */}
+        {/* ================= AUTHENTIC HUMAN BREATH / CARTOON BLOWING BREEZE ================= */}
         {isBlowing && (
           <g className="pointer-events-none overflow-visible">
-            {/* 1. Expanding Breath Funnel (Broad expanding cone of air from the person blowing) */}
+            {/* 1. Concentric Sweeping Breath Ripples moving forward */}
             <path
-              d="M 155,320 C 145,240 110,130 90,20 L 250,20 C 230,130 195,240 185,320 Z"
-              fill="url(#glazeGrad)"
-              opacity="0.08"
-            />
-
-            {/* 2. Concentric Sweeping Breath Ripples moving forward */}
-            <path
-              d="M 130,280 Q 170,250 210,280"
+              d="M 130,280 Q 170,240 210,280"
               stroke="#BAE6FD"
               strokeWidth="5"
               fill="none"
               strokeLinecap="round"
               className="animate-cartoon-wind"
-              opacity="0.8"
+              opacity="0.85"
             />
             <path
-              d="M 115,200 Q 170,165 225,200"
+              d="M 115,195 Q 170,155 225,195"
               stroke="#FFFFFF"
-              strokeWidth="5.5"
-              fill="none"
-              strokeLinecap="round"
-              className="animate-cartoon-wind"
-              opacity="0.9"
-            />
-            <path
-              d="M 95,110 Q 170,70 245,110"
-              stroke="#7DD3FC"
               strokeWidth="6"
               fill="none"
               strokeLinecap="round"
               className="animate-cartoon-wind"
-              opacity="0.85"
+              opacity="0.95"
+            />
+            <path
+              d="M 95,110 Q 170,65 245,110"
+              stroke="#7DD3FC"
+              strokeWidth="6.5"
+              fill="none"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+              opacity="0.9"
             />
 
-            {/* 3. Sweeping Central Gust Streams with Spiraling Swirl Vortices right over candles */}
+            {/* 2. Sweeping Central Gust Streams with Spiraling Swirl Vortices right over candles */}
             <path
-              d="M 170,320 C 170,230 160,150 142,40 C 138,20 126,12 136,25 C 144,35 158,30 165,22"
+              d="M 170,310 C 170,220 155,140 142,38 C 138,18 126,10 136,22 C 144,32 158,28 165,20"
               fill="none"
               stroke="#38BDF8"
               strokeWidth="7"
@@ -341,7 +334,7 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
               opacity="0.9"
             />
             <path
-              d="M 170,320 C 170,230 180,150 198,40 C 202,20 214,12 204,25 C 196,35 182,30 175,22"
+              d="M 170,310 C 170,220 185,140 198,38 C 202,18 214,10 204,22 C 196,32 182,28 175,20"
               fill="none"
               stroke="#38BDF8"
               strokeWidth="7"
@@ -349,35 +342,60 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
               className="animate-cartoon-wind"
               opacity="0.9"
             />
-            {/* White Core Aerodynamic Streak */}
+            {/* White Core Aerodynamic Wind Streak */}
             <path
-              d="M 170,320 C 170,220 170,130 170,15"
+              d="M 170,310 C 170,210 170,120 170,12"
               fill="none"
               stroke="#FFFFFF"
-              strokeWidth="4.5"
+              strokeWidth="5"
               strokeLinecap="round"
               className="animate-cartoon-wind"
               opacity="0.95"
             />
 
-            {/* 4. Billowing Translucent Cartoon Air Puff Clouds drifting up */}
+            {/* 3. Billowing Translucent Cartoon Air Puff Clouds drifting up */}
             <g className="animate-cartoon-puff">
-              <ellipse cx="170" cy="190" rx="22" ry="13" fill="#FFFFFF" opacity="0.8" />
-              <ellipse cx="185" cy="185" rx="16" ry="10" fill="#E0F2FE" opacity="0.75" />
-              <ellipse cx="155" cy="192" rx="15" ry="9" fill="#BAE6FD" opacity="0.7" />
+              <ellipse cx="170" cy="190" rx="24" ry="14" fill="#FFFFFF" opacity="0.85" />
+              <ellipse cx="188" cy="184" rx="18" ry="11" fill="#E0F2FE" opacity="0.8" />
+              <ellipse cx="152" cy="192" rx="16" ry="10" fill="#BAE6FD" opacity="0.75" />
             </g>
-            <g className="animate-cartoon-puff" style={{ animationDelay: '0.12s' }}>
-              <ellipse cx="150" cy="110" rx="20" ry="12" fill="#FFFFFF" opacity="0.85" />
-              <ellipse cx="190" cy="105" rx="18" ry="11" fill="#E0F2FE" opacity="0.8" />
+            <g className="animate-cartoon-puff" style={{ animationDelay: '0.15s' }}>
+              <ellipse cx="148" cy="105" rx="22" ry="13" fill="#FFFFFF" opacity="0.9" />
+              <ellipse cx="192" cy="100" rx="20" ry="12" fill="#E0F2FE" opacity="0.85" />
             </g>
-            <g className="animate-cartoon-puff" style={{ animationDelay: '0.22s' }}>
-              <ellipse cx="140" cy="35" rx="18" ry="10" fill="#FFFFFF" opacity="0.9" />
-              <ellipse cx="170" cy="25" rx="20" ry="12" fill="#E0F2FE" opacity="0.85" />
-              <ellipse cx="200" cy="35" rx="18" ry="10" fill="#FFFFFF" opacity="0.9" />
+            <g className="animate-cartoon-puff" style={{ animationDelay: '0.28s' }}>
+              <ellipse cx="140" cy="30" rx="20" ry="11" fill="#FFFFFF" opacity="0.95" />
+              <ellipse cx="170" cy="20" rx="22" ry="13" fill="#E0F2FE" opacity="0.9" />
+              <ellipse cx="200" cy="30" rx="20" ry="11" fill="#FFFFFF" opacity="0.95" />
             </g>
           </g>
         )}
       </svg>
+
+      {/* 100% Cross-Browser HTML Wind Gust Overlay (Ensures mobile devices never miss a frame) */}
+      {isBlowing && (
+        <div className="absolute inset-0 pointer-events-none z-30 overflow-visible animate-wind-breeze">
+          <svg viewBox="0 0 340 320" className="w-full h-full overflow-visible drop-shadow-md">
+            {/* Dynamic Swirling Air Streams */}
+            <path
+              d="M 160,320 C 145,210 135,120 142,34 C 146,18 158,16 160,28"
+              fill="none"
+              stroke="#38BDF8"
+              strokeWidth="6"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+            />
+            <path
+              d="M 180,320 C 195,210 205,120 198,34 C 194,18 182,16 180,28"
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth="5"
+              strokeLinecap="round"
+              className="animate-cartoon-wind"
+            />
+          </svg>
+        </div>
+      )}
     </div>
   );
 };

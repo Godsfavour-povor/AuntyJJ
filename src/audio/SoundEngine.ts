@@ -22,6 +22,98 @@ class SoundEngine {
   private currentScene: SceneId = 'scene_1_portal';
   private noteStep: number = 0;
 
+  private isBackgrounded: boolean = false;
+  private wasPlayingBeforeBackground: boolean = false;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+      window.addEventListener('pagehide', this.handlePageHide);
+      window.addEventListener('pageshow', this.handlePageShow);
+      window.addEventListener('blur', this.handleWindowBlur);
+      window.addEventListener('focus', this.handleWindowFocus);
+    }
+  }
+
+  private handleVisibilityChange = () => {
+    if (typeof document === 'undefined') return;
+    if (document.hidden) {
+      this.pauseBackgroundAudio();
+    } else {
+      this.resumeForegroundAudio();
+    }
+  };
+
+  private handlePageHide = () => {
+    this.pauseBackgroundAudio();
+  };
+
+  private handlePageShow = () => {
+    if (typeof document !== 'undefined' && !document.hidden) {
+      this.resumeForegroundAudio();
+    }
+  };
+
+  private handleWindowBlur = () => {
+    if (typeof document !== 'undefined' && document.hidden) {
+      this.pauseBackgroundAudio();
+    }
+  };
+
+  private handleWindowFocus = () => {
+    if (typeof document !== 'undefined' && !document.hidden) {
+      this.resumeForegroundAudio();
+    }
+  };
+
+  private pauseBackgroundAudio() {
+    this.isBackgrounded = true;
+    if (this.isMusicPlaying) {
+      this.wasPlayingBeforeBackground = true;
+    }
+    // Cancel any scheduled timer
+    if (this.melodyTimer) {
+      clearTimeout(this.melodyTimer);
+      this.melodyTimer = null;
+    }
+    // Mute master gain instantly
+    if (this.masterGain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(0, now);
+      } catch {}
+    }
+    // Suspend context to eliminate CPU and audio processing
+    if (this.ctx && this.ctx.state === 'running') {
+      this.ctx.suspend().catch(() => {});
+    }
+  }
+
+  private resumeForegroundAudio() {
+    this.isBackgrounded = false;
+    if (this.isMuted) return;
+
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+
+    if (this.masterGain && this.ctx) {
+      try {
+        const now = this.ctx.currentTime;
+        this.masterGain.gain.cancelScheduledValues(now);
+        this.masterGain.gain.setValueAtTime(0.85, now);
+      } catch {}
+    }
+
+    if (this.wasPlayingBeforeBackground && !this.isMuted) {
+      this.wasPlayingBeforeBackground = false;
+      if (!this.melodyTimer && this.isMusicPlaying) {
+        this.playMelodyStep();
+      }
+    }
+  }
+
   private initContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
@@ -40,7 +132,7 @@ class SoundEngine {
 
         // 2. Master Gain (Feeds into Compressor)
         this.masterGain = this.ctx.createGain();
-        this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.85, this.ctx.currentTime);
+        this.masterGain.gain.setValueAtTime(this.isMuted || this.isBackgrounded ? 0 : 0.85, this.ctx.currentTime);
         this.masterGain.connect(this.compressor);
 
         // 3. Music Sub-Bus (Calibrated gain for clear, warm, non-distorted playback)
@@ -54,7 +146,7 @@ class SoundEngine {
         this.sfxGain.connect(this.masterGain);
       }
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
+    if (this.ctx && this.ctx.state === 'suspended' && !this.isBackgrounded && !this.isMuted) {
       this.ctx.resume().catch(() => {});
     }
     return this.ctx;
@@ -83,9 +175,13 @@ class SoundEngine {
       this.stopMusic();
       this.ctx.suspend().catch(() => {});
     } else {
-      this.ctx.resume().then(() => {
-        this.startMusic();
-      }).catch(() => {});
+      if (!this.isBackgrounded) {
+        this.ctx.resume().then(() => {
+          this.startMusic();
+        }).catch(() => {});
+      } else {
+        this.wasPlayingBeforeBackground = true;
+      }
     }
   }
 
@@ -127,7 +223,7 @@ class SoundEngine {
 
   // --- CONTINUOUS PROCEDURAL SOUNDTRACK ---
   public startMusic() {
-    if (this.isMuted || this.isMusicPlaying) return;
+    if (this.isMuted || this.isMusicPlaying || this.isBackgrounded) return;
     const ctx = this.initContext();
     if (!ctx || !this.musicGain) return;
 
@@ -206,7 +302,7 @@ class SoundEngine {
   ];
 
   private playMelodyStep = () => {
-    if (this.isMuted || !this.isMusicPlaying || !this.ctx || !this.musicGain) return;
+    if (this.isMuted || !this.isMusicPlaying || this.isBackgrounded || !this.ctx || !this.musicGain) return;
 
     const noteIndex = this.noteStep % this.happyBirthdayNotes.length;
     const currentNote = this.happyBirthdayNotes[noteIndex];
@@ -367,6 +463,7 @@ class SoundEngine {
 
   public stopMusic() {
     this.isMusicPlaying = false;
+    this.wasPlayingBeforeBackground = false;
     if (this.melodyTimer) {
       clearTimeout(this.melodyTimer);
       this.melodyTimer = null;
