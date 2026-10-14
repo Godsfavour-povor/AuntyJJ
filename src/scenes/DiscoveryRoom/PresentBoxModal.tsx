@@ -84,11 +84,11 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
 
     const tl = gsap.timeline();
 
-    // 1. Slow & steady emergence of large 3D gift box to center screen (1.65s, power2.inOut)
+    // 1. Slow & steady emergence of 3D gift box to center screen (1.65s, power2.inOut)
     tl.to(giftBoxWrapperRef.current, {
       x: 0,
       y: 10,
-      scale: 1.4,
+      scale: 1.35,
       rotationY: 0,
       rotationX: 0,
       duration: 1.65,
@@ -108,7 +108,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       })
       .to(giftBoxWrapperRef.current, {
         rotationZ: -4,
-        scale: 1.45,
+        scale: 1.4,
         duration: 0.28,
         ease: 'sine.inOut',
       })
@@ -116,7 +116,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       .to(giftBoxWrapperRef.current, { rotationZ: -2.5, duration: 0.24, ease: 'sine.inOut' })
       .to(giftBoxWrapperRef.current, {
         rotationZ: 0,
-        scale: 1.42,
+        scale: 1.35,
         duration: 0.25,
         ease: 'sine.inOut',
       })
@@ -177,9 +177,9 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       .to(
         giftBoxWrapperRef.current,
         {
-          y: 260,
+          y: 280,
           scale: 0.65,
-          opacity: 0.1,
+          opacity: 0.05,
           duration: 2.1,
           ease: 'power2.inOut',
         },
@@ -241,48 +241,48 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
           ✨ Bringing your present out of the room...
         </div>
 
-        {/* 3D Gift Box Stage */}
+        {/* 3D Gift Box Stage & Card Container */}
         <div
-          className="relative w-72 sm:w-80 h-72 sm:h-80 flex items-center justify-center"
+          className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl flex items-center justify-center"
           style={{ transformStyle: 'preserve-3d' }}
         >
-          {/* RISING KEEPSAKE CARD: Occupies exact width of the actual photo! */}
+          {/* RISING KEEPSAKE CARD: Boosted width and height, picture fits cleanly in frame */}
           <div
             ref={presentCardRef}
-            className={`w-fit max-w-[94vw] max-h-[92vh] border-[4px] border-deep-ink shadow-[10px_10px_0px_#1E1B4B] rounded-3xl p-4 sm:p-6 flex flex-col items-center text-center z-20 ${
+            className={`w-[92vw] max-w-lg sm:max-w-xl md:max-w-2xl border-[4px] border-deep-ink shadow-[10px_10px_0px_#1E1B4B] rounded-3xl p-4 sm:p-6 flex flex-col items-center text-center z-20 ${
               isDone ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             style={{
               backgroundColor: getCardBg(present.boxColor),
             }}
           >
-            {/* Custom Photo Frame: hugs photo's exact dimensions with no letterboxing */}
-            <div className="relative rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-black/5 shadow-inner flex items-center justify-center mb-3">
+            {/* Custom Photo Frame: wide, boosted height & width, photo clean inside */}
+            <div className="w-full h-[52vh] sm:h-[58vh] max-h-[500px] rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/60 shadow-inner flex items-center justify-center p-1.5 mb-2.5">
               <img
                 src={photoUrl}
                 alt={present.title}
-                className="max-h-[64vh] sm:max-h-[70vh] max-w-[88vw] w-auto h-auto object-contain block rounded-xl"
+                className="w-full h-full object-contain block rounded-xl"
               />
             </div>
 
-            {/* Just beneath the picture with the handwriting stuff: spans exact width */}
+            {/* Just beneath the picture with the handwriting stuff: single line */}
             <div className="w-full py-1">
               <p className="font-handwritten text-3xl sm:text-4xl md:text-5xl font-bold text-coral text-center tracking-wide leading-tight">
                 {present.message}
               </p>
             </div>
 
-            {/* Action Button: spans exact width of the photo */}
+            {/* Action Button: 'Continue Exploring' */}
             <button
               onClick={handleCollect}
-              className="w-full py-3.5 mt-2.5 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3.5px] border-deep-ink font-display font-extrabold text-sm sm:text-base uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
+              className="w-full py-3.5 sm:py-4 mt-2.5 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3.5px] border-deep-ink font-display font-extrabold text-sm sm:text-base uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
             >
-              <Check className="w-5 h-5" />
-              <span>Keep Memory &amp; Continue Exploring ✨</span>
+              <Check className="w-5 h-5 stroke-[2.5]" />
+              <span>Continue Exploring ✨</span>
             </button>
           </div>
 
-          {/* THE 3D GIFT BOX WRAPPER (Bigger, bolder dimensions) */}
+          {/* THE 3D GIFT BOX WRAPPER */}
           <div
             ref={giftBoxWrapperRef}
             className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
