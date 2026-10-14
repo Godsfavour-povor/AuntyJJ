@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { soundEngine } from './SoundEngine';
 import type { SceneId } from '../types';
 
@@ -59,25 +59,50 @@ export function useAudio() {
     soundEngine.playFinaleFanfare();
   }, []);
 
+  const playPaperRustle = useCallback((duration: number = 0.8) => {
+    soundEngine.playPaperRustle(duration);
+  }, []);
+
   const playCardReveal = useCallback(() => {
     soundEngine.playCollect();
   }, []);
 
-  return {
-    unlockAudio,
-    setMuted,
-    startMusic,
-    stopMusic,
-    setScene,
-    duckMusic,
-    playPop,
-    playFootstep,
-    playCollect,
-    playCardReveal,
-    playGreeting,
-    playCandleBlow,
-    playPartyHorn,
-    playScratchChime,
-    playFinaleFanfare,
-  };
+  return useMemo(
+    () => ({
+      unlockAudio,
+      setMuted,
+      startMusic,
+      stopMusic,
+      setScene,
+      duckMusic,
+      playPop,
+      playFootstep,
+      playCollect,
+      playCardReveal,
+      playPaperRustle,
+      playGreeting,
+      playCandleBlow,
+      playPartyHorn,
+      playScratchChime,
+      playFinaleFanfare,
+    }),
+    [
+      unlockAudio,
+      setMuted,
+      startMusic,
+      stopMusic,
+      setScene,
+      duckMusic,
+      playPop,
+      playFootstep,
+      playCollect,
+      playCardReveal,
+      playPaperRustle,
+      playGreeting,
+      playCandleBlow,
+      playPartyHorn,
+      playScratchChime,
+      playFinaleFanfare,
+    ]
+  );
 }

@@ -846,6 +846,37 @@ class SoundEngine {
       });
     } catch {}
   }
+
+  // 9. Realistic Paper Rustle
+  public playPaperRustle(duration: number = 0.8) {
+    if (this.isMuted) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.sfxGain) return;
+
+    try {
+      const bufferSize = Math.floor(ctx.sampleRate * duration);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.sin((i / bufferSize) * Math.PI);
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1100;
+      filter.Q.value = 1.8;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.045;
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain);
+      noise.start();
+    } catch {}
+  }
 }
 
 export const soundEngine = new SoundEngine();

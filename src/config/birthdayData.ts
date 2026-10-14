@@ -54,15 +54,23 @@ export const BIRTHDAY_DATA: BirthdayConfig = {
 
   // Scene 4: The Big Birthday Finale
   letter: {
-    heading: "Happy Birthday, Big Sis! 🎉",
-    salutation: "Dearest Sister,",
+    heading: "Happy Birthday, My Love! ❤️",
+    salutation: "My Dearest Sister, My Love ❤️",
     paragraphs: [
-      "On your special day, I wanted to step outside the ordinary and create an experience as vibrant, joyful, and full of life as you are.",
-      "Having you as my elder sister is one of the greatest blessings I carry. Your quiet strength inspires me, your warmth grounds me, and the generous way you love our family sets a benchmark I always look up to.",
-      "As you blow out your candles and celebrate another incredible year, my prayer for you is simple: may this year bring you boundless happiness, open miraculous new doors of favor, grant you good health, and fulfill every single silent desire of your heart."
+      "I don't even know how to start, but first of all, happy birthday to you. ❤️",
+      "You've always been the best sister to me. Though it's only you, I've never felt like I was missing anything because you've always been there for me.",
+      "Many times, I would think to myself, in what way can I actually pay you back? I thought about getting you something, maybe buying you gifts and all, but I couldn't really put my hands on anything that could actually repay you for everything you've done.",
+      "Then something struck my heart, and I realized that it's not really about how much I can give you, but about the gratitude and appreciation I have for you.",
+      "You've always been there for me, never asking for anything in return, but always giving everything you can.",
+      "So, with the skills I've learned, I decided to make this little something for you.",
+      "It's nothing compared to what you've done for me. It's nothing compared to the love you've shown me. It's nothing compared to the care you've had for me.",
+      "But this is a little token from me to you, just to let you know how much I love and appreciate you.",
+      "Happy birthday once again, my love. ❤️",
+      "This is a new year for you, and I want you to enjoy it to the fullest. May God bless you, bless the work of your hands, and bless everything you're doing. May this new year bring you happiness, peace, and everything good that your heart desires.",
+      "Thank you very much for everything. I love you. ❤️"
     ],
-    closing: "With all my love and greatest admiration,",
-    signature: "Godsfavour"
+    closing: "With love,",
+    signature: "Godsfavour ❤️"
   },
 
   audio: {

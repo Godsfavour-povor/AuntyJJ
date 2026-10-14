@@ -1,173 +1,251 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mail, ArrowRight, Tv, Lightbulb, Flower2 } from 'lucide-react';
-import { useAdventure } from '../../context/AdventureContext';
 import { useAudio } from '../../audio/useAudio';
-import { PipCharacter } from '../../components/Character/PipCharacter';
-import { CinematicEnvelopeModal, type EnvelopeData } from './CinematicEnvelopeModal';
-import { FinalScratchModal } from './FinalScratchModal';
+import { PresentBoxModal, type PresentItem } from './PresentBoxModal';
+import { CinematicEnvelopeModal } from './CinematicEnvelopeModal';
 
-interface TableTarget {
+interface EnvelopeItem {
   id: string;
-  roomName: string;
-  name: string;
-  x: number; // in virtual pixels (0 - 800)
-  y: number; // in virtual pixels (0 - 500)
-  type: 'envelope' | 'final_surprise';
-  envelopeData?: EnvelopeData;
+  type: 'envelope';
+  title: string;
+  x: number;
+  y: number;
+  unlocked: boolean;
 }
 
-export const ApartmentGame: React.FC = () => {
-  const {
-    scratchCompleted,
-    characterMood,
-    goToScene,
-  } = useAdventure();
+type InteractiveItem = PresentItem | EnvelopeItem;
 
+const INITIAL_ITEMS: InteractiveItem[] = [
+  {
+    id: 'present-1',
+    type: 'present',
+    title: 'SISTERHOOD TROPHY GIFT',
+    cardHeading: 'The World’s Best Sister Trophy 🏆',
+    badge: 'GIFT #1 • COZY BEDROOM',
+    boxColor: '#F472B6',
+    x: 13.5,
+    y: 61,
+    unlocked: false,
+    photoUrl: '/IMG-20251014-WA0000.jpg',
+    message: 'Thank you mama ❤️',
+  },
+  {
+    id: 'present-2',
+    type: 'present',
+    title: 'SIBLING COMPASS GIFT',
+    cardHeading: 'Our Unbreakable Sibling Compass 🧭',
+    badge: 'GIFT #2 • LIVING LOUNGE',
+    boxColor: '#38BDF8',
+    x: 36,
+    y: 86,
+    unlocked: false,
+    photoUrl: '/IMG-20261014-WA0023.jpg',
+    message: 'Thank you for everything ✨',
+  },
+  {
+    id: 'present-3',
+    type: 'present',
+    title: 'LAUGHTER SPECIALIST GIFT',
+    cardHeading: 'The Laughter Specialist Award 😂',
+    badge: 'GIFT #3 • SUNSHINE BALCONY',
+    boxColor: '#FBBF24',
+    x: 87,
+    y: 67,
+    unlocked: false,
+    photoUrl: '/Screenshot_20251016_171306_WhatsApp.jpg',
+    message: 'Thank you for the care 🌸',
+  },
+  {
+    id: 'final-envelope',
+    type: 'envelope',
+    title: 'FINAL BIRTHDAY SURPRISE',
+    x: 50,
+    y: 17,
+    unlocked: false,
+  },
+];
+
+export const ApartmentGame: React.FC = () => {
   const audio = useAudio();
 
-  // Pip position in 800x500 virtual arena (starts in center of Parlor)
-  const [pipPos, setPipPos] = useState<{ x: number; y: number }>({ x: 400, y: 320 });
-  const [facing, setFacing] = useState<'left' | 'right' | 'up' | 'down'>('down');
-  const [isWalking, setIsWalking] = useState<boolean>(false);
-  const [walkTarget, setWalkTarget] = useState<{ x: number; y: number } | null>(null);
+  // Interactive items in the apartment
+  const [items, setItems] = useState<InteractiveItem[]>(INITIAL_ITEMS);
 
-  // Unlocked / opened envelope IDs
-  const [openedEnvelopes, setOpenedEnvelopes] = useState<string[]>([]);
-  const [activeEnvelope, setActiveEnvelope] = useState<EnvelopeData | null>(null);
-  const [finalModalOpen, setFinalModalOpen] = useState<boolean>(false);
+  // Player position in percentage coordinates (0 - 100)
+  const [playerPos, setPlayerPos] = useState<{ x: number; y: number }>({ x: 85, y: 54 });
+  const [facing, setFacing] = useState<'left' | 'right'>('right');
+  const [wobbleDeg, setWobbleDeg] = useState<number>(0);
 
-  // Active nearby target (ONLY active when Pip is standing right next to the table)
-  const [nearbyTarget, setNearbyTarget] = useState<TableTarget | null>(null);
+  // Active Modals
+  const [activePresent, setActivePresent] = useState<PresentItem | null>(null);
+  const [envelopeModalOpen, setEnvelopeModalOpen] = useState<boolean>(false);
 
-  // Interactive ambient toys
-  const [tvOn, setTvOn] = useState<boolean>(false);
-  const [lampOn, setLampOn] = useState<boolean>(false);
-  const [flowersWatered, setFlowersWatered] = useState<boolean>(false);
+  // Room status
+  const [roomInfo, setRoomInfo] = useState<{ name: string; emoji: string; color: string }>({
+    name: 'THE SUNSHINE BALCONY',
+    emoji: '🌼',
+    color: '#2DD4BF',
+  });
 
-  // Room indicator
-  const [roomNotification, setRoomNotification] = useState<string>('Living Room 🛋️');
-  const lastRoomRef = useRef<string>('parlor');
+  // Target destination when tapping floor
+  const targetPosRef = useRef<{ x: number; y: number } | null>(null);
+  const playerPosRef = useRef<{ x: number; y: number }>({ x: 85, y: 54 });
+  const keysRef = useRef<{ [key: string]: boolean }>({});
+  const joystickVectorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingJoystickRef = useRef<boolean>(false);
+  const stepTimerRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(performance.now());
+  const modalOpenRef = useRef<boolean>(false);
 
-  // Virtual Joystick Touch Tracking
+  // Keep modal state in sync with ref to pause animation loops cleanly
+  useEffect(() => {
+    modalOpenRef.current = !!activePresent || envelopeModalOpen;
+  }, [activePresent, envelopeModalOpen]);
+
+  // Apartment container ref
+  const apartmentRef = useRef<HTMLDivElement>(null);
   const joystickBaseRef = useRef<HTMLDivElement>(null);
-  const [joystickVector, setJoystickVector] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDraggingJoystick, setIsDraggingJoystick] = useState<boolean>(false);
+  const joystickKnobRef = useRef<HTMLDivElement>(null);
 
-  // Active keyboard keys
-  const keysDownRef = useRef<{ [key: string]: boolean }>({});
-  const lastStepTimeRef = useRef<number>(0);
-  const arenaRef = useRef<HTMLDivElement>(null);
+  const openedPresentsCount = items.filter((i) => i.type === 'present' && i.unlocked).length;
+  const allPresentsUnlocked = openedPresentsCount >= 3;
 
-  // 4 Interactive Tables with Envelopes across the apartment
-  const tables: TableTarget[] = [
-    {
-      id: 'env-bedroom',
-      roomName: 'Keepsake Bedroom',
-      name: 'Sisterhood Trophy Letter',
-      x: 140,
-      y: 260,
-      type: 'envelope',
-      envelopeData: {
-        id: 'env-bedroom',
-        roomName: 'The Keepsake Bedroom',
-        title: 'The Ultimate Sister Trophy',
-        badge: 'Family Record Holder 🏆',
-        subtitle: 'Official Award for Patience & Wisdom',
-        message:
-          'Awarded by unanimous vote for displaying Olympic-level patience, endless wisdom, and unconditional brotherly support. You make being a big sister look effortless, inspiring, and full of grace!',
-        pipRemark: 'Honestly, she deserves this trophy in solid 24k gold!',
-        accentColor: '#FDE047',
-      },
+  // Collision detection and boundary movement
+  const moveWithCollisions = useCallback(
+    (nextX: number, nextY: number) => {
+      const curX = playerPosRef.current.x;
+      const curY = playerPosRef.current.y;
+
+      // Outer boundary limits
+      let clampedX = Math.max(5, Math.min(95, nextX));
+      let clampedY = Math.max(8, Math.min(93, nextY));
+
+      // 1. Horizontal Top Wall at Y = 31% (Doorway in center X: 43% to 57%)
+      const crossingTopWall = (curY >= 31 && clampedY < 31) || (curY <= 31 && clampedY > 31);
+      if (crossingTopWall) {
+        const inCenterDoorway = clampedX > 43 && clampedX < 57;
+        if (!inCenterDoorway || !allPresentsUnlocked) {
+          clampedY = curY >= 31 ? 31.8 : 30.2;
+        }
+      }
+
+      // 2. Left Vertical Wall at X = 26% (for Y > 31%, doorway gap is Y: 65% to 83%)
+      if (clampedY > 31) {
+        const crossingLeftWall = (curX <= 26 && clampedX > 26) || (curX >= 26 && clampedX < 26);
+        const inLeftDoorway = clampedY > 65 && clampedY < 83;
+        if (crossingLeftWall && !inLeftDoorway) {
+          clampedX = curX <= 26 ? 25.2 : 26.8;
+        }
+
+        // 3. Right Vertical Wall at X = 74% (for Y > 31%, doorway gap is Y: 65% to 83%)
+        const crossingRightWall = (curX <= 74 && clampedX > 74) || (curX >= 74 && clampedX < 74);
+        const inRightDoorway = clampedY > 65 && clampedY < 83;
+        if (crossingRightWall && !inRightDoorway) {
+          clampedX = curX <= 74 ? 73.2 : 74.8;
+        }
+      }
+
+      playerPosRef.current = { x: clampedX, y: clampedY };
+      setPlayerPos({ x: clampedX, y: clampedY });
+
+      // Update room status
+      if (clampedY < 31) {
+        setRoomInfo({ name: 'THE BIRTHDAY SANCTUARY', emoji: '👑', color: '#C084FC' });
+      } else if (clampedX < 26) {
+        setRoomInfo({ name: 'THE COZY BEDROOM', emoji: '🎀', color: '#F472B6' });
+      } else if (clampedX > 74) {
+        setRoomInfo({ name: 'THE SUNSHINE BALCONY', emoji: '🌼', color: '#2DD4BF' });
+      } else {
+        setRoomInfo({ name: 'THE LIVING LOUNGE', emoji: '🛋️', color: '#38BDF8' });
+      }
     },
-    {
-      id: 'env-dining',
-      roomName: 'Sunshine Dining Balcony',
-      name: 'Laughter Specialist Note',
-      x: 660,
-      y: 310,
-      type: 'envelope',
-      envelopeData: {
-        id: 'env-dining',
-        roomName: 'The Sunshine Balcony',
-        title: 'The Laughter Specialist',
-        badge: 'Pure Sunshine ☀️',
-        subtitle: 'Contagious Chuckles Certified',
-        message:
-          'No matter how serious or busy life gets, your laugh has an undeniable superpower — it instantly makes everyone around you feel lighter, happier, and loved. Thank you for filling our family with pure warmth!',
-        pipRemark: 'Her smile could power an entire city!',
-        accentColor: '#FB7185',
-      },
-    },
-    {
-      id: 'env-parlor',
-      roomName: 'Parlor Living Room',
-      name: 'Sibling Compass Scroll',
-      x: 320,
-      y: 420,
-      type: 'envelope',
-      envelopeData: {
-        id: 'env-parlor',
-        roomName: 'The Sibling Den',
-        title: 'The Sibling Compass',
-        badge: 'Endless Guidance 🧭',
-        subtitle: 'Wisdom You Can Always Count On',
-        message:
-          "Thank you for being my big sister, my cheerleader, and a constant voice of reason. You've taught me how to walk with confidence, kindness, and big dreams.",
-        pipRemark: 'Best big sister ever? 100% verified by Godsfavour!',
-        accentColor: '#2DD4BF',
-      },
-    },
-    {
-      id: 'final-surprise',
-      roomName: 'The Secret Chamber',
-      name: 'Final Birthday Surprise',
-      x: 400,
-      y: 100,
-      type: 'final_surprise',
-    },
-  ];
+    [allPresentsUnlocked]
+  );
 
-  const allEnvelopesFound = openedEnvelopes.length >= 3;
+  // Main 60fps RequestAnimationFrame Game Loop
+  useEffect(() => {
+    let animId: number;
 
-  // Collision Boundaries
-  const isWalkable = useCallback((newX: number, newY: number) => {
-    // Outer walls
-    if (newX < 55 || newX > 745 || newY < 45 || newY > 465) return false;
+    const gameLoop = (now: number) => {
+      const dt = Math.min(0.05, (now - lastTimeRef.current) / 1000);
+      lastTimeRef.current = now;
 
-    // Outer wall dividing North Secret Chamber (Y: 20-160) from Center Parlor (Y: 160-470)
-    if (newY <= 165) {
-      if (newX < 350 || newX > 450) return false;
-      // Velvet ribbon lock until all 3 envelopes are opened
-      if (!allEnvelopesFound && newY < 155) return false;
-    }
+      if (!modalOpenRef.current) {
+        let moveX = joystickVectorRef.current.x;
+        let moveY = joystickVectorRef.current.y;
 
-    // Vertical wall dividing Bedroom from Parlor (X: 250, Doorway at Y: 270-370)
-    if (newX <= 255 && newX >= 245 && (newY < 270 || newY > 370)) return false;
+        const keys = keysRef.current;
+        if (keys['w'] || keys['arrowup']) moveY -= 1;
+        if (keys['s'] || keys['arrowdown']) moveY += 1;
+        if (keys['a'] || keys['arrowleft']) moveX -= 1;
+        if (keys['d'] || keys['arrowright']) moveX += 1;
 
-    // Vertical wall dividing Parlor from Balcony (X: 550, Doorway at Y: 270-370)
-    if (newX >= 545 && newX <= 555 && (newY < 270 || newY > 370)) return false;
+        // Click-to-walk target vector
+        if (moveX === 0 && moveY === 0 && targetPosRef.current) {
+          const dx = targetPosRef.current.x - playerPosRef.current.x;
+          const dy = targetPosRef.current.y - playerPosRef.current.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 1.2) {
+            moveX = dx / dist;
+            moveY = dy / dist;
+          } else {
+            targetPosRef.current = null;
+          }
+        }
 
-    // Obstacle: Center Parlor Coffee Table
-    if (newX > 370 && newX < 430 && newY > 320 && newY < 360) return false;
+        const mag = Math.hypot(moveX, moveY);
+        if (mag > 0.05) {
+          const normX = moveX / Math.max(1, mag);
+          const normY = moveY / Math.max(1, mag);
+          const speed = 28; // percentage units per second
 
-    return true;
-  }, [allEnvelopesFound]);
+          moveWithCollisions(
+            playerPosRef.current.x + normX * speed * dt,
+            playerPosRef.current.y + normY * speed * dt
+          );
 
-  // Keyboard Event Listeners
+          if (normX < -0.1) setFacing('left');
+          else if (normX > 0.1) setFacing('right');
+
+          // Walking waddle wobble
+          setWobbleDeg(Math.sin(now * 0.018) * 6);
+
+          stepTimerRef.current += dt;
+          if (stepTimerRef.current > 0.26) {
+            audio.playFootstep();
+            stepTimerRef.current = 0;
+          }
+        } else {
+          setWobbleDeg(0);
+        }
+      }
+
+      animId = requestAnimationFrame(gameLoop);
+    };
+
+    animId = requestAnimationFrame(gameLoop);
+    return () => cancelAnimationFrame(animId);
+  }, [moveWithCollisions, audio]);
+
+  // Keyboard navigation listeners
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      keysDownRef.current[e.key.toLowerCase()] = true;
-      setWalkTarget(null);
-
-      // Space or Enter triggers nearby target
-      if ((e.key === ' ' || e.key === 'Enter') && nearbyTarget) {
-        e.preventDefault();
-        triggerProximityAction();
+      const k = e.key.toLowerCase();
+      keysRef.current[k] = true;
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(k)) {
+        targetPosRef.current = null;
+      }
+      if ((k === 'enter' || k === ' ') && !modalOpenRef.current) {
+        // Trigger interaction with closest nearby item
+        const p = playerPosRef.current;
+        const nearby = items.find((i) => Math.hypot(p.x - i.x, p.y - i.y) < 13.5);
+        if (nearby) {
+          handleItemInteraction(nearby);
+        }
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      keysDownRef.current[e.key.toLowerCase()] = false;
+      keysRef.current[e.key.toLowerCase()] = false;
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -176,489 +254,476 @@ export const ApartmentGame: React.FC = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  });
+  }, [items]);
 
-  // Proximity Action Trigger (ONLY works when Pip is nearby)
-  const triggerProximityAction = () => {
-    if (!nearbyTarget) return;
-
-    if (nearbyTarget.type === 'final_surprise') {
-      setFinalModalOpen(true);
-    } else if (nearbyTarget.envelopeData) {
-      setActiveEnvelope(nearbyTarget.envelopeData);
-      if (!openedEnvelopes.includes(nearbyTarget.id)) {
-        setOpenedEnvelopes((prev) => [...prev, nearbyTarget.id]);
-      }
-    }
+  // Click anywhere on floor to walk
+  const handleFloorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (modalOpenRef.current) return;
+    const container = apartmentRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+    targetPosRef.current = { x: clickX, y: clickY };
+    audio.playPop();
   };
 
-  // Main 60fps Game Loop
-  useEffect(() => {
-    let animId: number;
-
-    const gameLoop = (timestamp: number) => {
-      let dx = 0;
-      let dy = 0;
-
-      // Joystick input
-      if (isDraggingJoystick) {
-        dx += joystickVector.x;
-        dy += joystickVector.y;
-        setWalkTarget(null);
-      }
-
-      // Keyboard input
-      const keys = keysDownRef.current;
-      if (keys['arrowleft'] || keys['a']) dx -= 1;
-      if (keys['arrowright'] || keys['d']) dx += 1;
-      if (keys['arrowup'] || keys['w']) dy -= 1;
-      if (keys['arrowdown'] || keys['s']) dy += 1;
-
-      // Tap-to-move path interpolation
-      if (walkTarget && !isDraggingJoystick && Math.hypot(dx, dy) === 0) {
-        const targetDx = walkTarget.x - pipPos.x;
-        const targetDy = walkTarget.y - pipPos.y;
-        const distToTarget = Math.hypot(targetDx, targetDy);
-        if (distToTarget > 6) {
-          dx = targetDx / distToTarget;
-          dy = targetDy / distToTarget;
-        } else {
-          setWalkTarget(null);
-        }
-      }
-
-      // Movement application
-      const mag = Math.hypot(dx, dy);
-      if (mag > 0.1) {
-        setIsWalking(true);
-        const speed = 3.6;
-        const moveX = (dx / mag) * speed;
-        const moveY = (dy / mag) * speed;
-
-        if (Math.abs(dx) > Math.abs(dy)) {
-          setFacing(dx < 0 ? 'left' : 'right');
-        } else {
-          setFacing(dy < 0 ? 'up' : 'down');
-        }
-
-        if (timestamp - lastStepTimeRef.current > 180) {
-          audio.playFootstep();
-          lastStepTimeRef.current = timestamp;
-        }
-
-        setPipPos((prev) => {
-          let nextX = prev.x;
-          let nextY = prev.y;
-
-          if (isWalkable(prev.x + moveX, prev.y)) {
-            nextX = prev.x + moveX;
-          }
-          if (isWalkable(prev.x, prev.y + moveY)) {
-            nextY = prev.y + moveY;
-          }
-          return { x: nextX, y: nextY };
-        });
-      } else {
-        setIsWalking(false);
-      }
-
-      // Check proximity (strictly <= 58px)
-      let foundNearby: TableTarget | null = null;
-      for (const t of tables) {
-        const dist = Math.hypot(t.x - pipPos.x, t.y - pipPos.y);
-        if (dist <= 58) {
-          foundNearby = t;
-          break;
-        }
-      }
-      setNearbyTarget(foundNearby);
-
-      // Track current room
-      let currentRoomCode = 'parlor';
-      let currentRoomTitle = 'Living Room 🛋️';
-      if (pipPos.y < 160) {
-        currentRoomCode = 'royal';
-        currentRoomTitle = 'The Secret Chamber 👑';
-      } else if (pipPos.x < 250) {
-        currentRoomCode = 'bedroom';
-        currentRoomTitle = 'The Keepsake Bedroom 🛏️';
-      } else if (pipPos.x > 550) {
-        currentRoomCode = 'balcony';
-        currentRoomTitle = 'The Sunshine Balcony ☀️';
-      }
-
-      if (currentRoomCode !== lastRoomRef.current) {
-        lastRoomRef.current = currentRoomCode;
-        setRoomNotification(currentRoomTitle);
-        audio.playPop();
-      }
-
-      animId = requestAnimationFrame(gameLoop);
-    };
-
-    animId = requestAnimationFrame(gameLoop);
-
-    return () => {
-      if (animId) cancelAnimationFrame(animId);
-    };
-  }, [isDraggingJoystick, joystickVector, pipPos, walkTarget, audio, isWalkable, tables]);
-
-  // Touch Virtual Joystick Handlers
+  // Virtual Joystick touch & drag handler
   const handleJoystickPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    setIsDraggingJoystick(true);
-    setWalkTarget(null);
-    e.currentTarget.setPointerCapture(e.pointerId);
-    updateJoystick(e.clientX, e.clientY);
+    if (modalOpenRef.current) return;
+    isDraggingJoystickRef.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    handleJoystickPointerMove(e);
   };
 
   const handleJoystickPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingJoystick) return;
-    updateJoystick(e.clientX, e.clientY);
-  };
-
-  const handleJoystickPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    setIsDraggingJoystick(false);
-    setJoystickVector({ x: 0, y: 0 });
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {}
-  };
-
-  const updateJoystick = (clientX: number, clientY: number) => {
+    if (!isDraggingJoystickRef.current) return;
     const base = joystickBaseRef.current;
     if (!base) return;
     const rect = base.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
+    const maxRadius = rect.width * 0.32;
 
-    const rawDx = clientX - centerX;
-    const rawDy = clientY - centerY;
-    const radius = rect.width / 2;
-    const dist = Math.hypot(rawDx, rawDy);
+    let dx = e.clientX - centerX;
+    let dy = e.clientY - centerY;
+    const dist = Math.hypot(dx, dy);
 
-    if (dist === 0) {
-      setJoystickVector({ x: 0, y: 0 });
-      return;
+    if (dist > maxRadius) {
+      dx = (dx / dist) * maxRadius;
+      dy = (dy / dist) * maxRadius;
     }
 
-    const clampedDist = Math.min(dist, radius);
-    setJoystickVector({
-      x: (rawDx / dist) * (clampedDist / radius),
-      y: (rawDy / dist) * (clampedDist / radius),
-    });
+    if (joystickKnobRef.current) {
+      joystickKnobRef.current.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+
+    joystickVectorRef.current = {
+      x: dx / maxRadius,
+      y: dy / maxRadius,
+    };
+    targetPosRef.current = null;
   };
 
-  // Tap-to-move on floor
-  const handleArenaClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const arena = arenaRef.current;
-    if (!arena) return;
-    const rect = arena.getBoundingClientRect();
-    const clickX = ((e.clientX - rect.left) / rect.width) * 800;
-    const clickY = ((e.clientY - rect.top) / rect.height) * 500;
-    setWalkTarget({ x: clickX, y: clickY });
-    audio.playPop();
+  const handleJoystickPointerUp = () => {
+    isDraggingJoystickRef.current = false;
+    if (joystickKnobRef.current) {
+      joystickKnobRef.current.style.transform = 'translate(0px, 0px)';
+    }
+    joystickVectorRef.current = { x: 0, y: 0 };
+  };
+
+  // Open item modal or walk to item
+  const handleItemInteraction = (item: InteractiveItem) => {
+    if (modalOpenRef.current) return;
+    const dist = Math.hypot(playerPosRef.current.x - item.x, playerPosRef.current.y - item.y);
+
+    if (dist < 15) {
+      if (item.type === 'present') {
+        setActivePresent(item);
+      } else if (item.type === 'envelope') {
+        if (!allPresentsUnlocked) {
+          audio.playPop();
+          return;
+        }
+        setEnvelopeModalOpen(true);
+      }
+    } else {
+      // Walk character near the clicked item
+      targetPosRef.current = {
+        x: item.x,
+        y: Math.min(92, item.y + 7),
+      };
+      audio.playPop();
+    }
+  };
+
+  // Handle present collect callback
+  const handlePresentCollect = (unlockedId: string, updatedPhotoUrl?: string) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id === unlockedId) {
+          return {
+            ...i,
+            unlocked: true,
+            photoUrl: updatedPhotoUrl && i.type === 'present' ? updatedPhotoUrl : (i as PresentItem).photoUrl,
+          };
+        }
+        return i;
+      })
+    );
+    setActivePresent(null);
   };
 
   return (
     <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center select-none">
-      {/* Top HUD Bar: Room Banner & Envelope Counter (Clean, no nag text) */}
-      <div className="w-full flex items-center justify-between px-4 py-2 mb-2 bg-white/95 border-2 border-deep-ink rounded-2xl shadow-[3px_3px_0px_#1E1B4B]">
+      {/* Top HUD Bar: Room Label and Present Counter */}
+      <div className="w-full neo-pill bg-white rounded-full px-4 sm:px-5 py-2.5 mb-3 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B]">
+        {/* Room Info with Live Color Dot */}
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-turquoise" />
-          <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
-            {roomNotification}
+          <span
+            className="w-3.5 h-3.5 rounded-full inline-block border border-deep-ink transition-colors"
+            style={{ backgroundColor: roomInfo.color }}
+          />
+          <span className="uppercase text-deep-ink font-display font-bold">
+            {roomInfo.name}
           </span>
+          <span className="text-sm">{roomInfo.emoji}</span>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Mail className="w-4 h-4 text-coral" />
-          <span className="font-display font-bold text-xs uppercase tracking-wider text-deep-ink">
-            Envelopes: {openedEnvelopes.length}/3 Unlocked
+        {/* Present Unlock Progress Counter */}
+        <div className="flex items-center gap-1.5 text-deep-ink">
+          <span className="text-coral text-base">🎁</span>
+          <span className="font-display font-bold text-xs uppercase tracking-wider">
+            {openedPresentsCount}/3 UNLOCKED
           </span>
         </div>
       </div>
 
-      {/* The 800 x 500 Apartment Game Arena */}
-      <div
-        ref={arenaRef}
-        onClick={handleArenaClick}
-        className="relative w-full aspect-[16/10] max-h-[520px] rounded-3xl border-4 border-deep-ink shadow-[8px_8px_0px_#1E1B4B] overflow-hidden bg-[#FDFBF7] cursor-pointer"
-      >
-        {/* Top-Down Apartment Architectural SVG Blueprint */}
-        <svg
-          viewBox="0 0 800 500"
-          className="absolute inset-0 w-full h-full pointer-events-none"
-        >
-          {/* Room Floors */}
-          {/* North Secret Chamber (Royal Lavender Carpet) */}
-          <rect x="250" y="20" width="300" height="140" fill="#EDE9FE" />
-          <path d="M 370,160 L 370,30 L 430,30 L 430,160 Z" fill="#F43F5E" opacity="0.3" />
-
-          {/* West Bedroom Floor (Lilac Carpet) */}
-          <rect x="50" y="160" width="200" height="300" fill="#FCE7F3" />
-          {/* Bed Illustration */}
-          <rect x="70" y="180" width="65" height="100" rx="8" fill="#F472B6" stroke="#1E1B4B" strokeWidth="2.5" />
-          <rect x="75" y="185" width="55" height="30" rx="4" fill="#FFFFFF" />
-
-          {/* East Dining Balcony Floor (Warm Yellow Terracotta) */}
-          <rect x="550" y="160" width="200" height="300" fill="#FEF3C7" />
-          <circle cx="660" cy="310" r="38" fill="#FDE68A" stroke="#1E1B4B" strokeWidth="2.5" />
-
-          {/* Center Parlor Living Room (Warm Honey Parquet) */}
-          <rect x="250" y="160" width="300" height="300" fill="#FEF9C3" />
-          {/* Parlor Rug */}
-          <ellipse cx="400" cy="330" rx="85" ry="55" fill="#E0F2FE" stroke="#1E1B4B" strokeWidth="2" strokeDasharray="6 4" />
-          {/* Coffee Table */}
-          <rect x="375" y="325" width="50" height="28" rx="6" fill="#FDBA74" stroke="#1E1B4B" strokeWidth="2.5" />
-          {/* Cozy Sofa */}
-          <rect x="360" y="380" width="80" height="36" rx="8" fill="#38BDF8" stroke="#1E1B4B" strokeWidth="2.5" />
-
-          {/* Apartment Outer & Dividing Walls */}
-          <rect x="50" y="20" width="700" height="440" fill="none" stroke="#1E1B4B" strokeWidth="6" />
-
-          {/* North Chamber Bottom Dividing Wall (Doorway at 350-450) */}
-          <line x1="50" y1="160" x2="350" y2="160" stroke="#1E1B4B" strokeWidth="6" />
-          <line x1="450" y1="160" x2="750" y2="160" stroke="#1E1B4B" strokeWidth="6" />
-          <circle cx="350" cy="160" r="4" fill="#1E1B4B" />
-          <circle cx="450" cy="160" r="4" fill="#1E1B4B" />
-
-          {/* West Bedroom Dividing Wall (Doorway at 270-370) */}
-          <line x1="250" y1="160" x2="250" y2="270" stroke="#1E1B4B" strokeWidth="6" />
-          <line x1="250" y1="370" x2="250" y2="460" stroke="#1E1B4B" strokeWidth="6" />
-          <circle cx="250" cy="270" r="4" fill="#1E1B4B" />
-          <circle cx="250" cy="370" r="4" fill="#1E1B4B" />
-
-          {/* East Balcony Dividing Wall (Doorway at 270-370) */}
-          <line x1="550" y1="160" x2="550" y2="270" stroke="#1E1B4B" strokeWidth="6" />
-          <line x1="550" y1="370" x2="550" y2="460" stroke="#1E1B4B" strokeWidth="6" />
-          <circle cx="550" cy="270" r="4" fill="#1E1B4B" />
-          <circle cx="550" cy="370" r="4" fill="#1E1B4B" />
-
-          {/* Golden Ribbon Lock across North Chamber Doorway (if envelopes not all found) */}
-          {!allEnvelopesFound && (
-            <g>
-              <line x1="350" y1="160" x2="450" y2="160" stroke="#F59E0B" strokeWidth="5" strokeDasharray="6 4" />
-              <circle cx="400" cy="160" r="10" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2" />
-              <text x="400" y="164" fontSize="10" textAnchor="middle" fill="#1E1B4B">🔒</text>
-            </g>
-          )}
-
-          {/* Grand Finale Archway in North Wall */}
-          <rect x="360" y="16" width="80" height="8" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2" />
-        </svg>
-
-        {/* Ambient Interactive Objects (TV, Lamp, Flowers) */}
-        {/* 1. Parlor TV Console */}
+      {/* Main Apartment Container Viewport (Aspect 16:10 Neo-Card) */}
+      <div className="w-full neo-card bg-[#FFFDF9] rounded-[28px] p-2 sm:p-4 relative">
         <div
-          onClick={(e) => {
-            e.stopPropagation();
-            setTvOn((prev) => !prev);
-            audio.playPop();
-          }}
-          className="absolute top-[175px] left-[380px] z-20 flex flex-col items-center cursor-pointer"
+          ref={apartmentRef}
+          onClick={handleFloorClick}
+          className="relative w-full aspect-[16/10] bg-white border-[4px] border-deep-ink overflow-hidden rounded-2xl shadow-inner cursor-pointer"
         >
-          <div className={`p-1 rounded border-2 border-deep-ink transition-colors ${tvOn ? 'bg-turquoise' : 'bg-white'}`}>
-            <Tv className="w-4 h-4 text-deep-ink" />
+          {/* ================= ROOM 4: TOP FINAL SURPRISE ROOM (LAVENDER #F3E8FF) ================= */}
+          <div className="absolute top-0 left-0 w-full h-[31%] bg-[#FAF8FF] border-b-[5px] border-deep-ink flex justify-center pointer-events-none">
+            <div className="w-[38%] h-full bg-[#F3E8FF] relative flex flex-col items-center justify-center">
+              {/* Golden Skylight Bar */}
+              <div className="w-24 h-3 bg-yellow border-2 border-deep-ink absolute -top-1" />
+              {/* Pink Carpet Runner */}
+              <div className="w-16 h-full bg-[#FBCFE8]/80" />
+            </div>
           </div>
-          <span className="text-[8px] font-bold text-deep-ink/70">TV</span>
-        </div>
 
-        {/* 2. Bedroom Desk Lamp */}
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            setLampOn((prev) => !prev);
-            audio.playPop();
-          }}
-          className="absolute top-[175px] left-[180px] z-20 flex flex-col items-center cursor-pointer"
-        >
-          <div className={`p-1 rounded-full border-2 border-deep-ink transition-colors ${lampOn ? 'bg-yellow shadow-[0_0_12px_#FDE047]' : 'bg-white'}`}>
-            <Lightbulb className="w-4 h-4 text-deep-ink" />
+          {/* ================= ROOM 1: BOTTOM-LEFT COZY BEDROOM (PINK #FDF2F8) ================= */}
+          <div className="absolute bottom-0 left-0 w-[26%] h-[69%] bg-[#FDF2F8] pointer-events-none">
+            {/* Pink Bed */}
+            <div className="absolute top-6 left-5 w-20 sm:w-24 h-28 sm:h-36 bg-[#F472B6] border-[3px] border-deep-ink rounded-xl p-2 flex flex-col shadow-sm">
+              <div className="w-full h-8 sm:h-10 bg-white border-2 border-deep-ink rounded-md" />
+            </div>
+            {/* Lamp Icon */}
+            <div className="absolute top-5 left-[112px] sm:left-[126px] flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-deep-ink flex items-center justify-center text-sm shadow-sm">
+                💡
+              </div>
+              <span className="text-[10px] font-bold text-slate-600 mt-0.5">Lamp</span>
+            </div>
           </div>
-          <span className="text-[8px] font-bold text-deep-ink/70">Lamp</span>
-        </div>
 
-        {/* 3. Balcony Flower Planter */}
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            setFlowersWatered(true);
-            audio.playCollect();
-          }}
-          className="absolute top-[175px] left-[680px] z-20 flex flex-col items-center cursor-pointer"
-        >
-          <div className={`p-1 rounded-full border-2 border-deep-ink transition-transform ${flowersWatered ? 'scale-110 bg-coral text-white' : 'bg-white text-coral'}`}>
-            <Flower2 className="w-4 h-4" />
+          {/* ================= ROOM 2: BOTTOM-CENTER LIVING LOUNGE (CREAM #FEFCE8) ================= */}
+          <div className="absolute bottom-0 left-[26%] w-[48%] h-[69%] bg-[#FEFCE8] pointer-events-none">
+            {/* TV Icon */}
+            <div className="absolute top-4 left-[18%] flex flex-col items-center">
+              <div className="w-8 h-7 rounded bg-white border-2 border-deep-ink flex items-center justify-center text-xs shadow-sm">
+                📺
+              </div>
+              <span className="text-[10px] font-bold text-slate-600 mt-0.5">TV</span>
+            </div>
+
+            {/* Dashed Oval Rug + Coffee Table + Blue Sofa */}
+            <div className="absolute top-[34%] left-1/2 -translate-x-1/2 w-[56%] h-[36%] rounded-[50%] bg-[#E0F2FE] border-[2.5px] border-dashed border-deep-ink flex items-center justify-center">
+              {/* Orange Coffee Table */}
+              <div className="w-14 sm:w-16 h-9 sm:h-10 bg-[#FDBA74] border-[2.5px] border-deep-ink rounded-lg shadow-sm" />
+            </div>
+            {/* Blue Sofa */}
+            <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 w-24 sm:w-28 h-11 sm:h-12 bg-[#38BDF8] border-[2.5px] border-deep-ink rounded-xl shadow-sm" />
           </div>
-          <span className="text-[8px] font-bold text-deep-ink/70">Flowers</span>
-        </div>
 
-        {/* Waypoint Click Beacon */}
-        {walkTarget && (
-          <div
-            className="absolute z-10 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-coral bg-coral/20 pointer-events-none"
-            style={{
-              left: `${(walkTarget.x / 800) * 100}%`,
-              top: `${(walkTarget.y / 500) * 100}%`,
-            }}
-          />
-        )}
+          {/* ================= ROOM 3: BOTTOM-RIGHT SUNSHINE BALCONY (YELLOW #FEF9C3) ================= */}
+          <div className="absolute bottom-0 right-0 w-[26%] h-[69%] bg-[#FEF9C3] pointer-events-none">
+            {/* Flowers Icon */}
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center">
+              <div className="w-8 h-8 rounded-full bg-white border-2 border-deep-ink flex items-center justify-center text-sm shadow-sm">
+                🌸
+              </div>
+              <span className="text-[10px] font-bold text-slate-600 mt-0.5">Flowers</span>
+            </div>
 
-        {/* 4 Interactive Tables & Envelopes (Proximity-Gated Only!) */}
-        {tables.map((t) => {
-          const isOpened = openedEnvelopes.includes(t.id);
-          const isNearby = nearbyTarget?.id === t.id;
+            {/* Round Balcony Table */}
+            <div className="absolute top-[45%] left-1/2 -translate-x-1/2 w-24 sm:w-28 h-24 sm:h-28 rounded-full bg-yellow border-[3px] border-deep-ink shadow-sm" />
+          </div>
 
-          return (
+          {/* ================= INTERIOR DIVIDING WALLS WITH DOORWAY GAPS ================= */}
+          {/* Left Vertical Wall (Between Bedroom & Living Lounge) */}
+          <div className="absolute top-[31%] left-[26%] w-[5px] h-[35%] bg-deep-ink -translate-x-1/2 rounded-b-full pointer-events-none" />
+          <div className="absolute bottom-0 left-[26%] w-[5px] h-[18%] bg-deep-ink -translate-x-1/2 rounded-t-full pointer-events-none" />
+
+          {/* Right Vertical Wall (Between Living Lounge & Balcony) */}
+          <div className="absolute top-[31%] left-[74%] w-[5px] h-[35%] bg-deep-ink -translate-x-1/2 rounded-b-full pointer-events-none" />
+          <div className="absolute bottom-0 left-[74%] w-[5px] h-[18%] bg-deep-ink -translate-x-1/2 rounded-t-full pointer-events-none" />
+
+          {/* Top Doorway Lock Barrier (Center of Top Wall at Y = 31%) */}
+          <div className="absolute top-[31%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[16%] h-4 flex items-center justify-center z-10 pointer-events-none">
             <div
-              key={t.id}
-              className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+              className={`w-full h-1.5 border-b-4 border-dashed border-amber-500 bg-white transition-opacity duration-700 ${
+                allPresentsUnlocked ? 'opacity-20' : 'opacity-100'
+              }`}
+            />
+            <div
+              className={`w-7 h-7 rounded-full border-[2.5px] border-deep-ink flex items-center justify-center text-xs shadow-md absolute transition-colors ${
+                allPresentsUnlocked ? 'bg-turquoise' : 'bg-yellow'
+              }`}
+            >
+              {allPresentsUnlocked ? '🔓' : '🔒'}
+            </div>
+          </div>
+
+          {/* ================= INTERACTIVE NODES LAYER (3 PRESENTS + 1 ROYAL ENVELOPE) ================= */}
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            {items.map((item) => {
+              const dist = Math.hypot(playerPos.x - item.x, playerPos.y - item.y);
+              const isNear = dist < 13.5;
+              const canOpen = item.type === 'present' || (item.type === 'envelope' && allPresentsUnlocked);
+
+              return (
+                <div
+                  key={item.id}
+                  id={`node-${item.id}`}
+                  style={{ left: `${item.x}%`, top: `${item.y}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center select-none"
+                >
+                  {/* Floating Pink "OPEN" pill button when near */}
+                  {isNear && canOpen && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemInteraction(item);
+                      }}
+                      className="open-item-btn neo-btn mb-1.5 px-4 py-1 rounded-full bg-coral hover:bg-coral-dark text-white font-display font-extrabold text-xs tracking-wider uppercase animate-bounce cursor-pointer z-30 pointer-events-auto"
+                    >
+                      {item.unlocked ? 'OPEN AGAIN' : 'OPEN'}
+                    </button>
+                  )}
+
+                  {/* Icon container */}
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemInteraction(item);
+                    }}
+                    className={`relative cursor-pointer transition-transform duration-200 pointer-events-auto ${
+                      isNear ? 'scale-110' : 'hover:scale-105'
+                    }`}
+                  >
+                    {/* Checkmark badge if unlocked */}
+                    {item.unlocked && (
+                      <div className="w-5 h-5 rounded-full bg-turquoise border-2 border-deep-ink flex items-center justify-center text-[10px] font-black text-deep-ink absolute -top-2 -right-2 z-20 shadow">
+                        ✓
+                      </div>
+                    )}
+
+                    {item.type === 'present' ? (
+                      /* 3D-Look Vector Present Box */
+                      <div className="w-12 h-11 sm:w-14 sm:h-12">
+                        <svg
+                          viewBox="0 0 64 60"
+                          className="w-full h-full overflow-visible drop-shadow-[0_3px_0px_rgba(30,27,75,0.25)]"
+                        >
+                          <ellipse
+                            cx="26"
+                            cy="10"
+                            rx="8"
+                            ry="5"
+                            transform="rotate(-15 26 10)"
+                            fill="#FDE047"
+                            stroke="#1E1B4B"
+                            strokeWidth="3"
+                          />
+                          <ellipse
+                            cx="38"
+                            cy="10"
+                            rx="8"
+                            ry="5"
+                            transform="rotate(15 38 10)"
+                            fill="#FDE047"
+                            stroke="#1E1B4B"
+                            strokeWidth="3"
+                          />
+                          <rect
+                            x="8"
+                            y="13"
+                            width="48"
+                            height="11"
+                            rx="3"
+                            fill={item.boxColor}
+                            stroke="#1E1B4B"
+                            strokeWidth="3.2"
+                          />
+                          <rect
+                            x="11"
+                            y="24"
+                            width="42"
+                            height="28"
+                            rx="4"
+                            fill={item.boxColor}
+                            stroke="#1E1B4B"
+                            strokeWidth="3.2"
+                          />
+                          <rect
+                            x="28"
+                            y="13"
+                            width="8"
+                            height="39"
+                            fill="#FDE047"
+                            stroke="#1E1B4B"
+                            strokeWidth="2.8"
+                          />
+                          <rect
+                            x="11"
+                            y="34"
+                            width="42"
+                            height="7"
+                            fill="#FDE047"
+                            stroke="#1E1B4B"
+                            strokeWidth="2.8"
+                          />
+                        </svg>
+                      </div>
+                    ) : (
+                      /* Royal Golden Envelope in Sanctuary */
+                      <div className="w-14 h-11 sm:w-16 sm:h-12">
+                        <svg
+                          viewBox="0 0 70 52"
+                          className="w-full h-full overflow-visible drop-shadow-[0_4px_0px_rgba(30,27,75,0.28)]"
+                        >
+                          <rect
+                            x="4"
+                            y="6"
+                            width="62"
+                            height="40"
+                            rx="5"
+                            fill="#FBBF24"
+                            stroke="#1E1B4B"
+                            strokeWidth="3.2"
+                          />
+                          <path
+                            d="M5 45 L35 24 L65 45"
+                            fill="#F59E0B"
+                            stroke="#1E1B4B"
+                            strokeWidth="3"
+                            strokeLinejoin="round"
+                          />
+                          <path
+                            d="M5 7 L35 28 L65 7"
+                            fill="#FDE047"
+                            stroke="#1E1B4B"
+                            strokeWidth="3.2"
+                            strokeLinejoin="round"
+                          />
+                          <circle
+                            cx="35"
+                            cy="25"
+                            r="6"
+                            fill="#C084FC"
+                            stroke="#1E1B4B"
+                            strokeWidth="2.5"
+                          />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Item Label Badge */}
+                  <div className="mt-1 px-3 py-0.5 rounded-full bg-white border-2 border-deep-ink text-[9px] sm:text-[10px] font-display font-extrabold tracking-wide text-deep-ink whitespace-nowrap shadow-sm">
+                    {item.title}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ================= DRESSED SISTER AVATAR CHARACTER ================= */}
+          <div
+            className="absolute z-20 w-14 h-16 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-75"
+            style={{
+              left: `${playerPos.x}%`,
+              top: `${playerPos.y}%`,
+            }}
+          >
+            <div
+              className="w-full h-full relative"
               style={{
-                left: `${(t.x / 800) * 100}%`,
-                top: `${(t.y / 500) * 100}%`,
+                transform: `scaleX(${facing === 'left' ? -1 : 1}) rotate(${wobbleDeg}deg)`,
               }}
             >
-              {/* Proximity Action Button: Floating right on top of table when Pip is close */}
-              {isNearby && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    triggerProximityAction();
-                  }}
-                  className="absolute -top-11 z-50 px-4 py-1.5 rounded-full bg-coral hover:bg-coral-dark text-white text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] border-2 border-deep-ink pointer-events-auto cursor-pointer animate-bounce hover:scale-105 active:scale-95 transition-transform"
-                >
-                  {t.type === 'final_surprise' ? '👑 Open' : '✉️ Open'}
-                </button>
-              )}
-
-              {/* Physical Illustrated Envelope on Mahogany Table Surface */}
-              <div
-                onClick={(e) => {
-                  if (isNearby) {
-                    e.stopPropagation();
-                    triggerProximityAction();
-                  }
-                }}
-                className={`relative transition-transform duration-200 ${
-                  isNearby ? 'cursor-pointer hover:scale-110 pointer-events-auto' : 'pointer-events-none'
-                }`}
+              <svg
+                viewBox="0 0 100 120"
+                className="w-full h-full overflow-visible drop-shadow-[0_4px_3px_rgba(30,27,75,0.22)]"
               >
-                {t.type === 'final_surprise' ? (
-                  /* Royal Golden Surprise Pedestal & Envelope */
-                  <svg viewBox="0 0 64 52" className="w-14 h-12 drop-shadow-md overflow-visible">
-                    <ellipse cx="32" cy="44" rx="26" ry="6" fill="#1E1B4B" opacity="0.25" />
-                    {/* Gilded Pedestal Stand */}
-                    <rect x="8" y="32" width="48" height="12" rx="3" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.2" />
-                    <rect x="12" y="28" width="40" height="6" rx="2" fill="#FEF08A" stroke="#1E1B4B" strokeWidth="1.8" />
-                    {/* Sealed Golden Keepsake Envelope */}
-                    <rect x="10" y="8" width="44" height="26" rx="3" fill="#FBBF24" stroke="#1E1B4B" strokeWidth="2.2" />
-                    <polygon points="10,8 32,23 54,8" fill="#FDE047" stroke="#1E1B4B" strokeWidth="1.8" />
-                    <polygon points="10,34 32,20 54,34" fill="#F59E0B" stroke="#1E1B4B" strokeWidth="1.5" />
-                    {/* Crown Seal */}
-                    <circle cx="32" cy="20" r="5.5" fill="#8B5CF6" stroke="#1E1B4B" strokeWidth="1.5" />
-                    <text x="32" y="24" fontSize="8" textAnchor="middle" fill="#FFFFFF">👑</text>
-                  </svg>
-                ) : (
-                  /* Authentic Physical Illustrated Envelope */
-                  <svg viewBox="0 0 64 48" className="w-14 h-11 drop-shadow-md overflow-visible">
-                    {/* Soft Shadow on Tabletop */}
-                    <ellipse cx="32" cy="40" rx="26" ry="6" fill="#1E1B4B" opacity="0.18" />
-
-                    {/* Table Surface Platter */}
-                    <ellipse cx="32" cy="36" rx="28" ry="8" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1.5" />
-
-                    {/* Manila / Parchment Envelope Body */}
-                    <rect x="8" y="10" width="48" height="28" rx="3" fill="#FFFDF8" stroke="#1E1B4B" strokeWidth="2.2" />
-
-                    {/* Realistic Fold Lines */}
-                    <polygon points="8,10 32,25 8,38" fill="#FAF5ED" stroke="#1E1B4B" strokeWidth="1.4" />
-                    <polygon points="56,10 32,25 56,38" fill="#F5EFE6" stroke="#1E1B4B" strokeWidth="1.4" />
-                    <polygon points="8,38 32,22 56,38" fill="#F2EAE0" stroke="#1E1B4B" strokeWidth="1.6" />
-
-                    {/* Top Triangular Flap */}
-                    <polygon points="8,10 32,24 56,10" fill="#FFFDF8" stroke="#1E1B4B" strokeWidth="2.2" />
-
-                    {/* Crimson Wax Seal Stamp */}
-                    <circle cx="32" cy="22" r="5" fill="#E11D48" stroke="#1E1B4B" strokeWidth="1.4" />
-                    <circle cx="32" cy="22" r="3" fill="#F43F5E" />
-
-                    {/* Checkmark Ribbon if opened */}
-                    {isOpened && (
-                      <g transform="translate(50, 8)">
-                        <circle cx="0" cy="0" r="6.5" fill="#2DD4BF" stroke="#1E1B4B" strokeWidth="1.5" />
-                        <text x="0" y="3" fontSize="8" textAnchor="middle" fill="#1E1B4B" fontWeight="bold">✓</text>
-                      </g>
-                    )}
-                  </svg>
-                )}
-              </div>
-
-              {/* Table Label */}
-              <div className="mt-1 px-2.5 py-0.5 rounded-full bg-white/95 border border-deep-ink text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-wider text-deep-ink shadow-sm whitespace-nowrap">
-                {t.name}
-              </div>
+                {/* Ground shadow */}
+                <ellipse cx="50" cy="110" rx="22" ry="5" fill="rgba(30,27,75,0.25)" />
+                {/* Walking Legs */}
+                <path d="M38 95 L36 108" stroke="#D97706" strokeWidth="4" strokeLinecap="round" />
+                <path d="M62 95 L64 108" stroke="#D97706" strokeWidth="4" strokeLinecap="round" />
+                {/* Body */}
+                <ellipse cx="50" cy="66" rx="26" ry="30" fill="#FACC15" stroke="#1E1B4B" strokeWidth="4" />
+                {/* Birthday Dress Trim */}
+                <path d="M25 74 Q50 84 75 74" fill="none" stroke="#FF6B8B" strokeWidth="5" strokeLinecap="round" />
+                <circle cx="50" cy="77" r="4" fill="#FF6B8B" stroke="#1E1B4B" strokeWidth="2.5" />
+                {/* Arms */}
+                <path d="M24 66 Q14 70 16 60" fill="none" stroke="#1E1B4B" strokeWidth="4" strokeLinecap="round" />
+                <path d="M76 66 Q88 56 88 48" fill="none" stroke="#1E1B4B" strokeWidth="4" strokeLinecap="round" />
+                {/* Eyes */}
+                <circle cx="40" cy="55" r="6" fill="#FFFFFF" stroke="#1E1B4B" strokeWidth="3" />
+                <circle cx="41.5" cy="55" r="2.8" fill="#1E1B4B" />
+                <circle cx="60" cy="55" r="6" fill="#FFFFFF" stroke="#1E1B4B" strokeWidth="3" />
+                <circle cx="61.5" cy="55" r="2.8" fill="#1E1B4B" />
+                {/* Smile & Rosy Cheeks */}
+                <ellipse cx="32" cy="62" rx="4" ry="2" fill="#FB7185" />
+                <ellipse cx="68" cy="62" rx="4" ry="2" fill="#FB7185" />
+                <path d="M45 63 Q50 68 55 63" fill="none" stroke="#1E1B4B" strokeWidth="3" strokeLinecap="round" />
+                {/* Birthday Party Hat */}
+                <polygon
+                  points="35,38 50,10 65,38"
+                  fill="#FF6B8B"
+                  stroke="#1E1B4B"
+                  strokeWidth="3.5"
+                  strokeLinejoin="round"
+                />
+                <path d="M40 28 L60 28" stroke="#FDE047" strokeWidth="4" />
+                <circle cx="50" cy="9" r="5" fill="#2DD4BF" stroke="#1E1B4B" strokeWidth="2.5" />
+              </svg>
             </div>
-          );
-        })}
+          </div>
 
-        {/* Pip The Mascot Moving In Apartment */}
-        <div
-          className={`absolute z-30 pointer-events-none -translate-x-1/2 -translate-y-1/2 transition-transform duration-75 ${
-            isWalking ? 'scale-105' : ''
-          }`}
-          style={{
-            left: `${(pipPos.x / 800) * 100}%`,
-            top: `${(pipPos.y / 500) * 100}%`,
-            transform: `translate(-50%, -50%) scaleX(${facing === 'left' ? -1 : 1})`,
-          }}
-        >
-          <PipCharacter mood={characterMood} size={65} />
-        </div>
-
-        {/* On-Screen Virtual Joystick (Bottom Left Only - Clean & Spacious) */}
-        <div
-          ref={joystickBaseRef}
-          onPointerDown={handleJoystickPointerDown}
-          onPointerMove={handleJoystickPointerMove}
-          onPointerUp={handleJoystickPointerUp}
-          onPointerCancel={handleJoystickPointerUp}
-          className="absolute bottom-3 left-3 z-40 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/85 border-3 border-deep-ink shadow-[3px_3px_0px_#1E1B4B] flex items-center justify-center touch-none cursor-pointer"
-        >
-          {/* Joystick Floating Knob */}
+          {/* ================= ON-SCREEN VIRTUAL JOYSTICK (BOTTOM-LEFT) ================= */}
           <div
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-turquoise border-2 border-deep-ink shadow-sm pointer-events-none transition-transform"
-            style={{
-              transform: `translate(${joystickVector.x * 28}px, ${joystickVector.y * 28}px)`,
-            }}
-          />
+            ref={joystickBaseRef}
+            onPointerDown={handleJoystickPointerDown}
+            onPointerMove={handleJoystickPointerMove}
+            onPointerUp={handleJoystickPointerUp}
+            onPointerCancel={handleJoystickPointerUp}
+            className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/95 border-[3.5px] border-deep-ink shadow-[4px_4px_0px_#1E1B4B] flex items-center justify-center z-30 touch-none cursor-grab active:cursor-grabbing"
+            title="Touch or Drag to walk"
+          >
+            <div
+              ref={joystickKnobRef}
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-turquoise border-[3px] border-deep-ink shadow-inner pointer-events-none transition-transform duration-75"
+            />
+          </div>
+
+          {/* Desktop Controls Helper Badge (Bottom-Right) */}
+          <div className="hidden sm:flex items-center gap-1.5 absolute bottom-4 right-4 bg-white/90 neo-btn px-3 py-1.5 rounded-full text-[11px] font-bold text-deep-ink z-20 pointer-events-none">
+            <span>🕹️ Drag Joystick, use <b>WASD / Arrows</b>, or <b>Click floor</b> to walk!</span>
+          </div>
         </div>
       </div>
 
-      {/* Guide Banner Under Map (Only when final surprise completed) */}
-      <div className="w-full mt-2.5 flex items-center justify-end px-2 text-xs">
-        {scratchCompleted && (
-          <button
-            onClick={() => goToScene('scene_4_finale')}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-coral to-peach text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all"
-          >
-            <span>Proceed to Finale! 🎈</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* Cinematic Multi-Stage Envelope Modal */}
-      {activeEnvelope && (
-        <CinematicEnvelopeModal
-          envelope={activeEnvelope}
-          onClose={() => setActiveEnvelope(null)}
+      {/* 3D Present Reveal Modal */}
+      {activePresent && (
+        <PresentBoxModal
+          key={activePresent.id}
+          present={activePresent}
+          onClose={handlePresentCollect}
         />
       )}
 
-      {/* Final Surprise Cloud Reveal & Scratch Modal */}
-      {finalModalOpen && (
-        <FinalScratchModal
-          onClose={() => setFinalModalOpen(false)}
+      {/* 3D Cinematic Envelope & Origami Tri-Fold Letter Modal */}
+      {envelopeModalOpen && (
+        <CinematicEnvelopeModal
+          onClose={() => setEnvelopeModalOpen(false)}
         />
       )}
     </div>

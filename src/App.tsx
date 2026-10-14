@@ -6,6 +6,7 @@ import { BirthdayPortal } from './scenes/BirthdayPortal/BirthdayPortal';
 import { WishMakingParty } from './scenes/WishMakingParty/WishMakingParty';
 import { DiscoveryRoom } from './scenes/DiscoveryRoom/DiscoveryRoom';
 import { BirthdayFinale } from './scenes/BirthdayFinale/BirthdayFinale';
+import { LandscapeOrientationPrompt } from './components/Orientation/LandscapeOrientationPrompt';
 
 const AdventureContent: React.FC = () => {
   const { currentScene, startAudioExperience } = useAdventure();
@@ -44,6 +45,9 @@ const AdventureContent: React.FC = () => {
 
       {/* Global Focused Keepsake Modal */}
       <MemoryModal />
+
+      {/* Forced Landscape Mode Prompt for Mobile */}
+      <LandscapeOrientationPrompt />
     </div>
   );
 };
