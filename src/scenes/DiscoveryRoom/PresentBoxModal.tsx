@@ -224,7 +224,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       role="dialog"
       aria-modal="true"
       onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-deep-ink/80 backdrop-blur-md select-none h-[100dvh] max-h-[100dvh] overflow-hidden"
+      className="fixed inset-0 z-50 flex flex-col items-center justify-start pt-2 sm:pt-4 pb-2 px-2 sm:px-4 bg-deep-ink/85 backdrop-blur-md select-none h-[100dvh] max-h-[100dvh] overflow-hidden"
       style={{ perspective: '1600px' }}
     >
       {/* Ambient Radial Glow matching the box color */}
@@ -237,43 +237,41 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
         }}
       />
 
-      <div className="relative w-full max-w-4xl h-full flex flex-col items-center justify-center overflow-hidden">
+      <div className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl h-full flex flex-col items-center justify-start overflow-hidden">
         {/* Step Status Pill using direct ref (visible only while box is opening, removed when picture appears) */}
         <div
           ref={hintTextRef}
-          className="px-4 py-1.5 rounded-full bg-white border-[3px] border-deep-ink shadow-[3px_3px_0px_#1E1B4B] text-xs font-display font-extrabold uppercase tracking-wider text-deep-ink mb-3 z-30 animate-fade-in flex-shrink-0"
+          className="px-4 py-1.5 rounded-full bg-white border-[3px] border-deep-ink shadow-[3px_3px_0px_#1E1B4B] text-xs font-display font-extrabold uppercase tracking-wider text-deep-ink my-1.5 z-30 animate-fade-in flex-shrink-0"
         >
           ✨ Bringing your present out of the room...
         </div>
 
         {/* 3D Gift Box Stage & Card Container */}
         <div
-          className="relative w-full max-w-lg sm:max-w-xl md:max-w-2xl flex items-center justify-center"
+          className="relative w-full h-full flex flex-col items-center justify-start"
           style={{ transformStyle: 'preserve-3d' }}
         >
-          {/* RISING KEEPSAKE CARD: Stays strictly within view height, non-scrollable */}
+          {/* RISING KEEPSAKE CARD: Stays strictly within view height, elevated from the top so head is 100% visible */}
           <div
             ref={presentCardRef}
-            className={`w-[94vw] max-w-lg sm:max-w-xl md:max-w-2xl max-h-[88dvh] border-[3.5px] sm:border-[4px] border-deep-ink shadow-[8px_8px_0px_#1E1B4B] sm:shadow-[10px_10px_0px_#1E1B4B] rounded-2xl sm:rounded-3xl p-3 sm:p-5 flex flex-col items-center justify-between text-center z-20 ${
+            className={`w-[96vw] max-w-lg h-[92dvh] max-h-[94dvh] border-[3.5px] sm:border-[4px] border-deep-ink shadow-[8px_8px_0px_#1E1B4B] sm:shadow-[10px_10px_0px_#1E1B4B] rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col items-center justify-between text-center z-20 ${
               isDone ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             style={{
               backgroundColor: getCardBg(present.boxColor),
             }}
           >
-            {/* Custom Photo Frame: Head guaranteed to show, brought down with top padding, zero cropping */}
-            <div className="w-full flex-1 min-h-0 h-[44dvh] sm:h-[50dvh] max-h-[380px] sm:max-h-[460px] rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/80 shadow-inner p-2 pt-3.5 sm:p-3 sm:pt-4 mb-2 flex items-center justify-center">
+            {/* Custom Photo Frame: Expanded height from top, head 100% shown, zero cropping */}
+            <div className="w-full flex-1 min-h-0 rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/90 shadow-inner p-2 pt-3.5 sm:p-3 sm:pt-4 mb-1.5 flex flex-col items-center justify-start relative">
               <img
                 src={photoUrl}
                 alt={present.title}
-                className="max-w-full max-h-full w-auto h-auto object-contain block rounded-lg shadow-sm"
+                className="w-full h-full block rounded-lg shadow-sm"
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  width: 'auto',
-                  height: 'auto',
+                  width: '100%',
+                  height: '100%',
                   objectFit: 'contain',
-                  objectPosition: 'center top',
+                  objectPosition: 'top center',
                 }}
               />
             </div>
@@ -288,7 +286,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             {/* Action Button: 'Continue Exploring ✨' */}
             <button
               onClick={handleCollect}
-              className="w-full py-2.5 sm:py-3.5 mt-1 sm:mt-2 rounded-xl sm:rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3px] sm:border-[3.5px] border-deep-ink font-display font-extrabold text-xs sm:text-base uppercase tracking-wider shadow-[3.5px_3.5px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 flex-shrink-0 pointer-events-auto"
+              className="w-full py-2.5 sm:py-3.5 mt-1 rounded-xl sm:rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3px] sm:border-[3.5px] border-deep-ink font-display font-extrabold text-xs sm:text-base uppercase tracking-wider shadow-[3.5px_3.5px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 flex-shrink-0 pointer-events-auto"
             >
               <Check className="w-4 h-4 sm:w-5 sm:h-5 stroke-[2.5]" />
               <span>Continue Exploring ✨</span>
