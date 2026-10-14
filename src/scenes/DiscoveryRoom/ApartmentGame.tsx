@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mail, Crown, ArrowRight, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Tv, Lightbulb, Flower2 } from 'lucide-react';
+import { Mail, ArrowRight, Tv, Lightbulb, Flower2 } from 'lucide-react';
 import { useAdventure } from '../../context/AdventureContext';
 import { useAudio } from '../../audio/useAudio';
 import { PipCharacter } from '../../components/Character/PipCharacter';
@@ -348,18 +348,6 @@ export const ApartmentGame: React.FC = () => {
     });
   };
 
-  // Directional D-Pad Button Helper
-  const setDpadDirection = (dirX: number, dirY: number, active: boolean) => {
-    setWalkTarget(null);
-    if (active) {
-      setIsDraggingJoystick(true);
-      setJoystickVector({ x: dirX, y: dirY });
-    } else {
-      setIsDraggingJoystick(false);
-      setJoystickVector({ x: 0, y: 0 });
-    }
-  };
-
   // Tap-to-move on floor
   const handleArenaClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const arena = arenaRef.current;
@@ -524,45 +512,89 @@ export const ApartmentGame: React.FC = () => {
           return (
             <div
               key={t.id}
-              className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              className="absolute z-20 flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
               style={{
                 left: `${(t.x / 800) * 100}%`,
                 top: `${(t.y / 500) * 100}%`,
               }}
             >
-              {/* Proximity prompt badge (ONLY visible when Pip is standing right beside table) */}
+              {/* Proximity Action Button: Floating right on top of table when Pip is close */}
               {isNearby && (
-                <div className="absolute -top-7 px-2 py-0.5 rounded-full bg-coral text-white text-[10px] font-display font-bold uppercase tracking-wider shadow-sm z-30">
-                  Inspect! 💬
-                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    triggerProximityAction();
+                  }}
+                  className="absolute -top-11 z-50 px-4 py-1.5 rounded-full bg-coral hover:bg-coral-dark text-white text-xs font-display font-bold uppercase tracking-wider shadow-[3px_3px_0px_#1E1B4B] border-2 border-deep-ink pointer-events-auto cursor-pointer animate-bounce hover:scale-105 active:scale-95 transition-transform"
+                >
+                  {t.type === 'final_surprise' ? '👑 Open' : '✉️ Open'}
+                </button>
               )}
 
-              {/* Table Object Icon */}
+              {/* Physical Illustrated Envelope on Mahogany Table Surface */}
               <div
-                className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl border-2 border-deep-ink shadow-[2px_2px_0px_#1E1B4B] flex items-center justify-center transition-all ${
-                  t.type === 'final_surprise'
-                    ? 'bg-gradient-to-r from-coral to-yellow'
-                    : isOpened
-                    ? 'bg-yellow/80 ring-2 ring-turquoise'
-                    : 'bg-white'
+                onClick={(e) => {
+                  if (isNearby) {
+                    e.stopPropagation();
+                    triggerProximityAction();
+                  }
+                }}
+                className={`relative transition-transform duration-200 ${
+                  isNearby ? 'cursor-pointer hover:scale-110 pointer-events-auto' : 'pointer-events-none'
                 }`}
               >
                 {t.type === 'final_surprise' ? (
-                  <Crown className="w-5 h-5 text-deep-ink" />
+                  /* Royal Golden Surprise Pedestal & Envelope */
+                  <svg viewBox="0 0 64 52" className="w-14 h-12 drop-shadow-md overflow-visible">
+                    <ellipse cx="32" cy="44" rx="26" ry="6" fill="#1E1B4B" opacity="0.25" />
+                    {/* Gilded Pedestal Stand */}
+                    <rect x="8" y="32" width="48" height="12" rx="3" fill="#FDE047" stroke="#1E1B4B" strokeWidth="2.2" />
+                    <rect x="12" y="28" width="40" height="6" rx="2" fill="#FEF08A" stroke="#1E1B4B" strokeWidth="1.8" />
+                    {/* Sealed Golden Keepsake Envelope */}
+                    <rect x="10" y="8" width="44" height="26" rx="3" fill="#FBBF24" stroke="#1E1B4B" strokeWidth="2.2" />
+                    <polygon points="10,8 32,23 54,8" fill="#FDE047" stroke="#1E1B4B" strokeWidth="1.8" />
+                    <polygon points="10,34 32,20 54,34" fill="#F59E0B" stroke="#1E1B4B" strokeWidth="1.5" />
+                    {/* Crown Seal */}
+                    <circle cx="32" cy="20" r="5.5" fill="#8B5CF6" stroke="#1E1B4B" strokeWidth="1.5" />
+                    <text x="32" y="24" fontSize="8" textAnchor="middle" fill="#FFFFFF">👑</text>
+                  </svg>
                 ) : (
-                  <Mail className="w-5 h-5 text-coral" />
-                )}
+                  /* Authentic Physical Illustrated Envelope */
+                  <svg viewBox="0 0 64 48" className="w-14 h-11 drop-shadow-md overflow-visible">
+                    {/* Soft Shadow on Tabletop */}
+                    <ellipse cx="32" cy="40" rx="26" ry="6" fill="#1E1B4B" opacity="0.18" />
 
-                {/* Checked mark if opened */}
-                {isOpened && (
-                  <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-turquoise border border-deep-ink flex items-center justify-center text-[9px] font-bold text-deep-ink">
-                    ✓
-                  </div>
+                    {/* Table Surface Platter */}
+                    <ellipse cx="32" cy="36" rx="28" ry="8" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="1.5" />
+
+                    {/* Manila / Parchment Envelope Body */}
+                    <rect x="8" y="10" width="48" height="28" rx="3" fill="#FFFDF8" stroke="#1E1B4B" strokeWidth="2.2" />
+
+                    {/* Realistic Fold Lines */}
+                    <polygon points="8,10 32,25 8,38" fill="#FAF5ED" stroke="#1E1B4B" strokeWidth="1.4" />
+                    <polygon points="56,10 32,25 56,38" fill="#F5EFE6" stroke="#1E1B4B" strokeWidth="1.4" />
+                    <polygon points="8,38 32,22 56,38" fill="#F2EAE0" stroke="#1E1B4B" strokeWidth="1.6" />
+
+                    {/* Top Triangular Flap */}
+                    <polygon points="8,10 32,24 56,10" fill="#FFFDF8" stroke="#1E1B4B" strokeWidth="2.2" />
+
+                    {/* Crimson Wax Seal Stamp */}
+                    <circle cx="32" cy="22" r="5" fill="#E11D48" stroke="#1E1B4B" strokeWidth="1.4" />
+                    <circle cx="32" cy="22" r="3" fill="#F43F5E" />
+
+                    {/* Checkmark Ribbon if opened */}
+                    {isOpened && (
+                      <g transform="translate(50, 8)">
+                        <circle cx="0" cy="0" r="6.5" fill="#2DD4BF" stroke="#1E1B4B" strokeWidth="1.5" />
+                        <text x="0" y="3" fontSize="8" textAnchor="middle" fill="#1E1B4B" fontWeight="bold">✓</text>
+                      </g>
+                    )}
+                  </svg>
                 )}
               </div>
 
               {/* Table Label */}
-              <div className="mt-1 px-2 py-0.5 rounded-full bg-white/95 border border-deep-ink text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-wider text-deep-ink shadow-sm whitespace-nowrap">
+              <div className="mt-1 px-2.5 py-0.5 rounded-full bg-white/95 border border-deep-ink text-[9px] sm:text-[10px] font-display font-bold uppercase tracking-wider text-deep-ink shadow-sm whitespace-nowrap">
                 {t.name}
               </div>
             </div>
@@ -583,7 +615,7 @@ export const ApartmentGame: React.FC = () => {
           <PipCharacter mood={characterMood} size={65} />
         </div>
 
-        {/* On-Screen Virtual Joystick (Bottom Left) */}
+        {/* On-Screen Virtual Joystick (Bottom Left Only - Clean & Spacious) */}
         <div
           ref={joystickBaseRef}
           onPointerDown={handleJoystickPointerDown}
@@ -599,62 +631,6 @@ export const ApartmentGame: React.FC = () => {
               transform: `translate(${joystickVector.x * 28}px, ${joystickVector.y * 28}px)`,
             }}
           />
-        </div>
-
-        {/* On-Screen Proximity Action Button (Bottom Right) */}
-        <div className="absolute bottom-4 right-4 z-40 flex flex-col items-end gap-2">
-          {nearbyTarget && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                triggerProximityAction();
-              }}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-coral hover:bg-coral-dark text-white border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all cursor-pointer"
-            >
-              <span>
-                {nearbyTarget.type === 'final_surprise'
-                  ? '👑 Open Final Surprise!'
-                  : '✉️ Open Envelope!'}
-              </span>
-            </button>
-          )}
-
-          {/* Quick D-Pad Stepping Buttons (For Phone Ergonomics) */}
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="flex flex-col items-center bg-white/90 p-1.5 rounded-2xl border-2 border-deep-ink shadow-[2px_2px_0px_#1E1B4B]"
-          >
-            <button
-              onPointerDown={() => setDpadDirection(0, -1, true)}
-              onPointerUp={() => setDpadDirection(0, -1, false)}
-              className="w-7 h-7 rounded-lg bg-yellow hover:bg-yellow-dark flex items-center justify-center border border-deep-ink text-deep-ink font-bold active:bg-coral active:text-white"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-            <div className="flex gap-1 my-0.5">
-              <button
-                onPointerDown={() => setDpadDirection(-1, 0, true)}
-                onPointerUp={() => setDpadDirection(-1, 0, false)}
-                className="w-7 h-7 rounded-lg bg-yellow hover:bg-yellow-dark flex items-center justify-center border border-deep-ink text-deep-ink font-bold active:bg-coral active:text-white"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onPointerDown={() => setDpadDirection(1, 0, true)}
-                onPointerUp={() => setDpadDirection(1, 0, false)}
-                className="w-7 h-7 rounded-lg bg-yellow hover:bg-yellow-dark flex items-center justify-center border border-deep-ink text-deep-ink font-bold active:bg-coral active:text-white"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <button
-              onPointerDown={() => setDpadDirection(0, 1, true)}
-              onPointerUp={() => setDpadDirection(0, 1, false)}
-              className="w-7 h-7 rounded-lg bg-yellow hover:bg-yellow-dark flex items-center justify-center border border-deep-ink text-deep-ink font-bold active:bg-coral active:text-white"
-            >
-              <ChevronDown className="w-4 h-4" />
-            </button>
-          </div>
         </div>
       </div>
 
