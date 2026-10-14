@@ -256,21 +256,19 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
               backgroundColor: getCardBg(present.boxColor),
             }}
           >
-            {/* Custom Photo Frame: Head guaranteed to show, brought down slightly from top border */}
-            <div className="w-full flex-1 min-h-0 h-[48dvh] sm:h-[54dvh] max-h-[48dvh] sm:max-h-[500px] rounded-xl sm:rounded-2xl border-[3px] sm:border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/70 shadow-inner flex items-center justify-center p-2 pt-3 sm:p-3 sm:pt-4 mb-1.5 relative">
-              <img
-                src={photoUrl}
-                alt={present.title}
-                className="block rounded-lg sm:rounded-xl shadow-sm"
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '100%',
-                  width: 'auto',
-                  height: 'auto',
-                  objectFit: 'contain',
-                  objectPosition: 'center top',
-                }}
-              />
+            {/* Custom Photo Frame: Head guaranteed to show, brought down with top padding, zero cropping */}
+            <div className="w-full flex-1 min-h-0 h-[48dvh] sm:h-[54dvh] max-h-[48dvh] sm:max-h-[500px] rounded-xl sm:rounded-2xl border-[3px] sm:border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/70 shadow-inner p-2 pt-3 sm:p-3 sm:pt-4 mb-1.5 relative flex items-center justify-center">
+              <div className="relative w-full h-full flex items-center justify-center">
+                <img
+                  src={photoUrl}
+                  alt={present.title}
+                  className="absolute inset-0 w-full h-full block rounded-lg sm:rounded-xl shadow-sm"
+                  style={{
+                    objectFit: 'contain',
+                    objectPosition: 'center top',
+                  }}
+                />
+              </div>
             </div>
 
             {/* Just beneath the picture with handwriting: single line */}
