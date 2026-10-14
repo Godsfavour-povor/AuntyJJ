@@ -2,11 +2,13 @@ import React from 'react';
 
 interface BirthdayCakeProps {
   candlesBlown: boolean;
+  isBlowing?: boolean;
   onBlowCandles: () => void;
 }
 
 export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
   candlesBlown,
+  isBlowing = false,
   onBlowCandles,
 }) => {
   return (
@@ -23,7 +25,7 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
           onBlowCandles();
         }
       }}
-      aria-label={candlesBlown ? "Birthday cake with extinguished candles" : "Birthday cake: tap to blow out candles"}
+      aria-label={candlesBlown ? "Birthday cake with extinguished candles" : "Birthday cake: blow out candles"}
     >
       <svg
         viewBox="0 0 280 260"
@@ -81,6 +83,15 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
         <circle cx="140" cy="132" r="2.8" fill="#2DD4BF" />
         <circle cx="170" cy="128" r="2.8" fill="#C084FC" />
 
+        {/* Physical Wind Stream Lines during blow */}
+        {isBlowing && (
+          <g stroke="#38BDF8" strokeWidth="3" fill="none" strokeLinecap="round" className="animate-pulse">
+            <path d="M 40,40 Q 80,30 130,42 T 220,38" opacity="0.8" />
+            <path d="M 60,55 Q 110,48 160,52 T 240,48" opacity="0.9" />
+            <path d="M 30,70 Q 90,62 150,68 T 230,62" opacity="0.7" />
+          </g>
+        )}
+
         {/* 3 Birthday Candles */}
         {[
           { x: 110, y: 55, color: '#FB7185' },
@@ -108,7 +119,16 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
 
             {/* Candle Flame (If not extinguished) */}
             {!candlesBlown ? (
-              <g className="animate-pulse">
+              <g
+                className={`transition-transform duration-200 ${
+                  isBlowing
+                    ? 'origin-bottom scale-75 -skew-x-12'
+                    : 'animate-pulse'
+                }`}
+                style={{
+                  transformOrigin: `${candle.x}px ${candle.y - 6}px`,
+                }}
+              >
                 {/* Outer flame glow */}
                 <ellipse cx={candle.x} cy={candle.y - 15} rx="8" ry="12" fill="#F59E0B" opacity="0.4" />
                 {/* Core Flame */}
@@ -123,8 +143,9 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
               </g>
             ) : (
               /* Wisps of rising smoke when blown */
-              <g stroke="#94A3B8" strokeWidth="2" fill="none" strokeLinecap="round" className="animate-fade-in">
-                <path d={`M ${candle.x},${candle.y - 7} Q ${candle.x - 4},${candle.y - 16} ${candle.x + 2},${candle.y - 28}`} opacity="0.7" />
+              <g stroke="#94A3B8" strokeWidth="2.2" fill="none" strokeLinecap="round" className="animate-fade-in">
+                <path d={`M ${candle.x},${candle.y - 7} Q ${candle.x - 5},${candle.y - 18} ${candle.x + 4},${candle.y - 32}`} opacity="0.8" />
+                <path d={`M ${candle.x + 1},${candle.y - 14} Q ${candle.x + 6},${candle.y - 24} ${candle.x - 2},${candle.y - 38}`} opacity="0.6" />
               </g>
             )}
           </g>

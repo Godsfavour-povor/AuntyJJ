@@ -83,6 +83,10 @@ class SoundEngine {
     }
   }
 
+  public getCurrentScene(): SceneId {
+    return this.currentScene;
+  }
+
   // Temporarily duck music for candle blowing
   public duckMusic(duck: boolean) {
     if (!this.ctx || !this.musicGain) return;
@@ -132,76 +136,64 @@ class SoundEngine {
       this.padOscillators.push(osc);
     });
 
-    // 2. Playful Piano & Celesta Melody Sequencer
+    // 2. Playful Piano & Celesta Melody Sequencer (Authentic "Happy Birthday To You")
     this.noteStep = 0;
     this.playMelodyStep();
   }
 
+  // Authentic "Happy Birthday to You" notes and timing
+  private happyBirthdayNotes: Array<{ f: number; d: number; wait: number; bassFreq?: number }> = [
+    // Phrase 1: "Hap-py birth-day to you"
+    { f: 261.63, d: 0.32, wait: 360, bassFreq: 174.61 }, // C4 ("Hap-")
+    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 293.66, d: 0.55, wait: 580 },                   // D4 ("birth-")
+    { f: 261.63, d: 0.55, wait: 580 },                   // C4 ("-day")
+    { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("to")
+    { f: 329.63, d: 1.10, wait: 1150, bassFreq: 130.81 }, // E4 ("you~")
+
+    // Phrase 2: "Hap-py birth-day to you"
+    { f: 261.63, d: 0.32, wait: 360 },                   // C4 ("Hap-")
+    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 293.66, d: 0.55, wait: 580 },                   // D4 ("birth-")
+    { f: 261.63, d: 0.55, wait: 580 },                   // C4 ("-day")
+    { f: 392.00, d: 0.55, wait: 580 },                   // G4 ("to")
+    { f: 349.23, d: 1.10, wait: 1150, bassFreq: 174.61 }, // F4 ("you~")
+
+    // Phrase 3: "Hap-py birth-day dear Sis-ter"
+    { f: 261.63, d: 0.32, wait: 360 },                   // C4 ("Hap-")
+    { f: 261.63, d: 0.20, wait: 240 },                   // C4 ("-py")
+    { f: 523.25, d: 0.55, wait: 580, bassFreq: 233.08 }, // C5 ("birth-")
+    { f: 440.00, d: 0.55, wait: 580 },                   // A4 ("-day")
+    { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("dear")
+    { f: 329.63, d: 0.55, wait: 580 },                   // E4 ("Sis-")
+    { f: 293.66, d: 1.10, wait: 1150, bassFreq: 146.83 }, // D4 ("-ter~")
+
+    // Phrase 4: "Hap-py birth-day to you!"
+    { f: 466.16, d: 0.32, wait: 360 },                   // Bb4 ("Hap-")
+    { f: 466.16, d: 0.20, wait: 240 },                   // Bb4 ("-py")
+    { f: 440.00, d: 0.55, wait: 580 },                   // A4 ("birth-")
+    { f: 349.23, d: 0.55, wait: 580 },                   // F4 ("-day")
+    { f: 392.00, d: 0.65, wait: 680, bassFreq: 130.81 }, // G4 ("to")
+    { f: 349.23, d: 1.60, wait: 2400, bassFreq: 174.61 }, // F4 ("you~~!") (Long joyous finish)
+  ];
+
   private playMelodyStep = () => {
     if (!this.isMusicPlaying || !this.ctx || !this.musicGain) return;
 
-    // Adapt melodic sequence based on current scene
-    // F-Major warm animated melody motifs
-    const portalMotif = [
-      { f: 349.23, d: 0.9 }, // F4
-      { f: 440.00, d: 0.8 }, // A4
-      { f: 523.25, d: 1.1 }, // C5
-      { f: 440.00, d: 0.7 }, // A4
-      { f: 587.33, d: 1.2 }, // D5
-      { f: 523.25, d: 0.9 }, // C5
-      { f: 392.00, d: 1.4 }, // G4
-      { f: 349.23, d: 1.6 }, // F4
-    ];
+    const noteIndex = this.noteStep % this.happyBirthdayNotes.length;
+    const currentNote = this.happyBirthdayNotes[noteIndex];
 
-    const partyMotif = [
-      { f: 523.25, d: 0.7 }, // C5
-      { f: 587.33, d: 0.6 }, // D5
-      { f: 659.25, d: 0.8 }, // E5
-      { f: 698.46, d: 1.0 }, // F5
-      { f: 659.25, d: 0.7 }, // E5
-      { f: 587.33, d: 0.7 }, // D5
-      { f: 523.25, d: 1.2 }, // C5
-      { f: 440.00, d: 1.4 }, // A4
-    ];
-
-    const discoveryMotif = [
-      { f: 440.00, d: 0.5 }, // A4
-      { f: 523.25, d: 0.5 }, // C5
-      { f: 587.33, d: 0.6 }, // D5
-      { f: 659.25, d: 0.6 }, // E5
-      { f: 587.33, d: 0.5 }, // D5
-      { f: 523.25, d: 0.6 }, // C5
-      { f: 698.46, d: 1.0 }, // F5
-      { f: 587.33, d: 1.2 }, // D5
-    ];
-
-    const finaleMotif = [
-      { f: 349.23, d: 0.8 }, // F4
-      { f: 523.25, d: 0.8 }, // C5
-      { f: 698.46, d: 1.2 }, // F5
-      { f: 659.25, d: 0.8 }, // E5
-      { f: 587.33, d: 0.9 }, // D5
-      { f: 523.25, d: 1.1 }, // C5
-      { f: 440.00, d: 0.9 }, // A4
-      { f: 349.23, d: 2.0 }, // F4
-    ];
-
-    let currentMotif = portalMotif;
-    if (this.currentScene === 'scene_2_party') currentMotif = partyMotif;
-    else if (this.currentScene === 'scene_3_discovery') currentMotif = discoveryMotif;
-    else if (this.currentScene === 'scene_4_finale') currentMotif = finaleMotif;
-
-    const currentNote = currentMotif[this.noteStep % currentMotif.length];
+    // Trigger Felt Piano melody note
     this.triggerPianoNote(currentNote.f, currentNote.d);
 
-    // In Scene 3 (Mini-Game), add a subtle playful pizzicato bass note!
-    if (this.currentScene === 'scene_3_discovery' && this.noteStep % 2 === 0) {
-      this.triggerPizzicatoNote(currentNote.f * 0.5, 0.4);
+    // Warm pizzicato / acoustic bass on phrase anchors
+    if (currentNote.bassFreq) {
+      this.triggerPizzicatoNote(currentNote.bassFreq, currentNote.d * 1.2);
     }
 
     this.noteStep++;
-    // Tempo: ~750ms between notes for relaxed, lyrical pacing
-    this.melodyTimer = window.setTimeout(this.playMelodyStep, 780);
+    // Precise rhythm interval to preserve the natural 3/4 waltz of Happy Birthday
+    this.melodyTimer = window.setTimeout(this.playMelodyStep, currentNote.wait);
   };
 
   // Synthesize acoustic felt piano note

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 import { useAdventure } from '../../context/AdventureContext';
 import { BIRTHDAY_DATA } from '../../config/birthdayData';
 import { FoldingLetter } from './FoldingLetter';
@@ -30,11 +29,6 @@ export const BirthdayFinale: React.FC = () => {
 
       {/* Top Header Card */}
       <header className="relative z-10 text-center max-w-2xl mt-12 sm:mt-8 space-y-2">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white border-2 border-deep-ink text-xs font-display font-bold uppercase tracking-widest text-deep-ink shadow-[2px_2px_0px_#1E1B4B]">
-          <Sparkles className="w-3.5 h-3.5 text-coral fill-current animate-spin" />
-          <span>Chapter IV &middot; The Big Finale</span>
-        </div>
-
         <h1 className="text-3xl sm:text-5xl font-display font-bold text-deep-ink tracking-tight drop-shadow-sm">
           🎂 Happy Birthday, {BIRTHDAY_DATA.sisterName}! 🎈
         </h1>
