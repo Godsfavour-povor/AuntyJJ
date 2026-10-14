@@ -39,7 +39,7 @@ const INITIAL_ITEMS: InteractiveItem[] = [
     y: 86,
     unlocked: false,
     photoUrl: '/IMG-20261014-WA0023.jpg',
-    message: 'Thank you for everything ✨',
+    message: 'I no get another picture 😭',
   },
   {
     id: 'present-3',
