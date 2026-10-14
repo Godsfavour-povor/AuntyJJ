@@ -73,8 +73,7 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
       audio.setMuted(next);
       return next;
     });
-    startAudioExperience();
-  }, [audio, startAudioExperience]);
+  }, [audio]);
 
   const goToScene = useCallback((scene: SceneId) => {
     setCurrentScene(scene);
