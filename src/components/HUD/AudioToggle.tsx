@@ -8,26 +8,26 @@ export const AudioToggle: React.FC = () => {
   return (
     <button
       onClick={toggleAudio}
-      className="group relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-plum-900/80 backdrop-blur-md border border-gold-400/25 hover:border-gold-400/60 text-ivory transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-gold-400/50 shadow-lg shadow-black/40"
-      aria-label={isAudioMuted ? "Unmute audio" : "Mute audio"}
-      title={isAudioMuted ? "Sound is off — click to turn on" : "Sound is on — click to mute"}
+      className="group relative flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border-2 border-deep-ink text-deep-ink shadow-[3px_3px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[1px_1px_0px_#1E1B4B] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-coral"
+      aria-label={isAudioMuted ? "Unmute cheerful party audio" : "Mute audio"}
+      title={isAudioMuted ? "Audio is muted — click to unmute" : "Music is playing — click to mute"}
     >
       {isAudioMuted ? (
-        <VolumeX className="w-4 h-4 text-gold-400/70 group-hover:text-gold-400 transition-colors" />
+        <VolumeX className="w-4 h-4 text-coral" />
       ) : (
         <div className="flex items-center gap-1.5">
-          <Volume2 className="w-4 h-4 text-gold-400 group-hover:scale-110 transition-transform" />
+          <Volume2 className="w-4 h-4 text-turquoise-dark group-hover:scale-110 transition-transform" />
           {isAudioStarted && (
             <span className="flex items-end gap-0.5 h-3">
-              <span className="w-0.5 h-2 bg-gold-400/80 animate-pulse" />
-              <span className="w-0.5 h-3 bg-gold-400 animate-pulse delay-75" />
-              <span className="w-0.5 h-1.5 bg-gold-400/80 animate-pulse delay-150" />
+              <span className="w-1 h-2 bg-coral rounded-full animate-bounce" />
+              <span className="w-1 h-3 bg-yellow-dark rounded-full animate-bounce delay-75" />
+              <span className="w-1 h-1.5 bg-turquoise rounded-full animate-bounce delay-150" />
             </span>
           )}
         </div>
       )}
-      <span className="text-xs tracking-wider uppercase font-medium text-ivory/80 group-hover:text-ivory">
-        {isAudioMuted ? "Sound Off" : "Atmosphere"}
+      <span className="text-xs font-display font-semibold tracking-wider text-deep-ink">
+        {isAudioMuted ? "Sound Off" : "Music Box"}
       </span>
     </button>
   );

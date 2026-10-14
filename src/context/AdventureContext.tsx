@@ -1,24 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import type { SceneId, MemoryItem } from '../types';
+import type { SceneId, CharacterMood, MemoryItem } from '../types';
 import { useAudio } from '../audio/useAudio';
 
 interface AdventureContextType {
   currentScene: SceneId;
+  characterMood: CharacterMood;
+  wishStage: 'intro' | 'making_wish' | 'blow_candles' | 'candles_blown';
   isAudioMuted: boolean;
   isAudioStarted: boolean;
   reducedMotion: boolean;
-  candleExtinguished: boolean;
   scratchCompleted: boolean;
   exploredMemoryIds: string[];
   activeModalMemory: MemoryItem | null;
   letterOpened: boolean;
   celebrationFired: boolean;
-  
+
   // Actions
   goToScene: (scene: SceneId) => void;
+  setCharacterMood: (mood: CharacterMood) => void;
+  setWishStage: (stage: 'intro' | 'making_wish' | 'blow_candles' | 'candles_blown') => void;
   toggleAudio: () => void;
   startAudioExperience: () => void;
-  extinguishCandle: () => void;
+  extinguishCandles: () => void;
   completeScratch: () => void;
   exploreMemory: (id: string) => void;
   openMemoryModal: (memory: MemoryItem) => void;
@@ -31,11 +34,12 @@ interface AdventureContextType {
 const AdventureContext = createContext<AdventureContextType | undefined>(undefined);
 
 export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [currentScene, setCurrentScene] = useState<SceneId>('scene_1_spark');
+  const [currentScene, setCurrentScene] = useState<SceneId>('scene_1_portal');
+  const [characterMood, setCharacterMood] = useState<CharacterMood>('happy');
+  const [wishStage, setWishStage] = useState<'intro' | 'making_wish' | 'blow_candles' | 'candles_blown'>('intro');
   const [isAudioMuted, setIsAudioMuted] = useState<boolean>(false);
   const [isAudioStarted, setIsAudioStarted] = useState<boolean>(false);
   const [reducedMotion, setReducedMotion] = useState<boolean>(false);
-  const [candleExtinguished, setCandleExtinguished] = useState<boolean>(false);
   const [scratchCompleted, setScratchCompleted] = useState<boolean>(false);
   const [exploredMemoryIds, setExploredMemoryIds] = useState<string[]>([]);
   const [activeModalMemory, setActiveModalMemory] = useState<MemoryItem | null>(null);
@@ -44,7 +48,7 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   const audio = useAudio();
 
-  // Detect prefers-reduced-motion
+  // Reduced motion preference
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -58,7 +62,7 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
   const startAudioExperience = useCallback(() => {
     if (!isAudioStarted) {
       audio.unlockAudio();
-      audio.startAmbient();
+      audio.startMusic();
       setIsAudioStarted(true);
     }
   }, [audio, isAudioStarted]);
@@ -75,23 +79,33 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
   const goToScene = useCallback((scene: SceneId) => {
     setCurrentScene(scene);
     startAudioExperience();
-  }, [startAudioExperience]);
+    audio.playPop();
 
-  const extinguishCandle = useCallback(() => {
-    if (candleExtinguished) return;
-    setCandleExtinguished(true);
-    startAudioExperience();
+    // Scene-specific character reaction
+    if (scene === 'scene_2_party') {
+      setCharacterMood('curious');
+      setWishStage('intro');
+    } else if (scene === 'scene_3_discovery') {
+      setCharacterMood('pointing');
+    } else if (scene === 'scene_4_finale') {
+      setCharacterMood('celebrating');
+    }
+  }, [audio, startAudioExperience]);
+
+  const extinguishCandles = useCallback(() => {
+    if (wishStage === 'candles_blown') return;
+    setWishStage('candles_blown');
+    setCharacterMood('celebrating');
     audio.playCandleBlow();
-
-    // After smoke & ember expansion, transition to Scene 2
     setTimeout(() => {
-      goToScene('scene_2_scratch');
-    }, 2400);
-  }, [candleExtinguished, startAudioExperience, audio, goToScene]);
+      audio.playPartyHorn();
+    }, 350);
+  }, [wishStage, audio]);
 
   const completeScratch = useCallback(() => {
     if (scratchCompleted) return;
     setScratchCompleted(true);
+    setCharacterMood('celebrating');
     audio.playCardReveal();
   }, [scratchCompleted, audio]);
 
@@ -102,7 +116,8 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
   const openMemoryModal = useCallback((memory: MemoryItem) => {
     setActiveModalMemory(memory);
     exploreMemory(memory.id);
-    audio.playCardReveal();
+    setCharacterMood('happy');
+    audio.playPop();
   }, [audio, exploreMemory]);
 
   const closeMemoryModal = useCallback(() => {
@@ -112,41 +127,48 @@ export const AdventureProvider: React.FC<{ children: ReactNode }> = ({ children 
   const openLetter = useCallback(() => {
     if (letterOpened) return;
     setLetterOpened(true);
-    audio.playSealBreak();
+    setCharacterMood('celebrating');
+    audio.playCardReveal();
   }, [letterOpened, audio]);
 
   const fireCelebration = useCallback(() => {
     setCelebrationFired(true);
-    audio.playCelebration();
+    setCharacterMood('celebrating');
+    audio.playFinaleFanfare();
   }, [audio]);
 
   const replayAdventure = useCallback(() => {
-    setCandleExtinguished(false);
+    setCurrentScene('scene_1_portal');
+    setCharacterMood('happy');
+    setWishStage('intro');
     setScratchCompleted(false);
     setExploredMemoryIds([]);
     setActiveModalMemory(null);
     setLetterOpened(false);
     setCelebrationFired(false);
-    setCurrentScene('scene_1_spark');
-  }, []);
+    audio.playPop();
+  }, [audio]);
 
   return (
     <AdventureContext.Provider
       value={{
         currentScene,
+        characterMood,
+        wishStage,
         isAudioMuted,
         isAudioStarted,
         reducedMotion,
-        candleExtinguished,
         scratchCompleted,
         exploredMemoryIds,
         activeModalMemory,
         letterOpened,
         celebrationFired,
         goToScene,
+        setCharacterMood,
+        setWishStage,
         toggleAudio,
         startAudioExperience,
-        extinguishCandle,
+        extinguishCandles,
         completeScratch,
         exploreMemory,
         openMemoryModal,

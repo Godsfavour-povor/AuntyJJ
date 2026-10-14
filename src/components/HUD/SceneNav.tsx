@@ -5,33 +5,33 @@ import type { SceneId } from '../../types';
 interface SceneStep {
   id: SceneId;
   label: string;
+  emoji: string;
 }
 
 const SCENE_STEPS: SceneStep[] = [
-  { id: 'scene_1_spark', label: 'The Spark' },
-  { id: 'scene_2_scratch', label: 'The Mystery' },
-  { id: 'scene_3_memories', label: 'Memories' },
-  { id: 'scene_4_finale', label: 'Finale' },
+  { id: 'scene_1_portal', label: 'Portal', emoji: '🎁' },
+  { id: 'scene_2_party', label: 'Party', emoji: '🎂' },
+  { id: 'scene_3_discovery', label: 'Discovery', emoji: '🔍' },
+  { id: 'scene_4_finale', label: 'Finale', emoji: '🎈' },
 ];
 
 export const SceneNav: React.FC = () => {
-  const { currentScene, goToScene, candleExtinguished, scratchCompleted } = useAdventure();
+  const { currentScene, goToScene, wishStage, scratchCompleted } = useAdventure();
 
   const getIsAccessible = (index: number): boolean => {
-    // Allows forward navigation if previously unlocked, or free navigation if tested
     if (index === 0) return true;
-    if (index === 1) return candleExtinguished || currentScene !== 'scene_1_spark';
-    if (index === 2) return scratchCompleted || currentScene === 'scene_3_memories' || currentScene === 'scene_4_finale';
+    if (index === 1) return wishStage === 'candles_blown' || currentScene !== 'scene_1_portal';
+    if (index === 2) return scratchCompleted || currentScene === 'scene_3_discovery' || currentScene === 'scene_4_finale';
     if (index === 3) return currentScene === 'scene_4_finale';
     return false;
   };
 
-  const currentIndex = SCENE_STEPS.findIndex(s => s.id === currentScene);
+  const currentIndex = SCENE_STEPS.findIndex((s) => s.id === currentScene);
 
   return (
     <nav
-      aria-label="Experience progression"
-      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-plum-900/60 backdrop-blur-md border border-gold-400/20 shadow-md shadow-black/30"
+      aria-label="Adventure progression"
+      className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 rounded-full bg-white/95 border-2 border-deep-ink shadow-[3px_3px_0px_#1E1B4B]"
     >
       {SCENE_STEPS.map((step, idx) => {
         const isActive = step.id === currentScene;
@@ -43,28 +43,20 @@ export const SceneNav: React.FC = () => {
             key={step.id}
             onClick={() => isUnlocked && goToScene(step.id)}
             disabled={!isUnlocked}
-            className={`group relative flex items-center gap-1.5 px-2 py-1 rounded-full text-xs transition-all duration-300 focus:outline-none focus:ring-1 focus:ring-gold-400 ${
+            className={`group relative flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-display font-semibold transition-all duration-200 focus:outline-none ${
               isActive
-                ? 'bg-gold-400/20 text-gold-300 font-semibold'
+                ? 'bg-yellow text-deep-ink border border-deep-ink shadow-sm'
                 : isPast
-                ? 'text-ivory/80 hover:text-gold-300'
+                ? 'text-deep-ink/80 hover:text-coral'
                 : isUnlocked
-                ? 'text-ivory/50 hover:text-ivory/80'
-                : 'text-ivory/25 cursor-not-allowed'
+                ? 'text-deep-ink/50 hover:text-deep-ink'
+                : 'text-deep-ink/25 cursor-not-allowed'
             }`}
             title={`Go to ${step.label}`}
             aria-current={isActive ? 'step' : undefined}
           >
-            <span
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                isActive
-                  ? 'bg-gold-400 ring-2 ring-gold-400/50 scale-125'
-                  : isPast
-                  ? 'bg-gold-400/70'
-                  : 'bg-ivory/25'
-              }`}
-            />
-            <span className="hidden sm:inline tracking-wider font-light">
+            <span>{step.emoji}</span>
+            <span className="hidden sm:inline">
               {step.label}
             </span>
           </button>

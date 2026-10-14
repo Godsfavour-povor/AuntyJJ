@@ -10,16 +10,28 @@ export function useAudio() {
     soundEngine.setMuted(muted);
   }, []);
 
-  const startAmbient = useCallback(() => {
-    soundEngine.startAmbientLoop();
+  const startMusic = useCallback(() => {
+    soundEngine.startMusicLoop();
   }, []);
 
-  const stopAmbient = useCallback(() => {
-    soundEngine.stopAmbientLoop();
+  const stopMusic = useCallback(() => {
+    soundEngine.stopMusicLoop();
+  }, []);
+
+  const playPop = useCallback(() => {
+    soundEngine.playCartoonPop();
+  }, []);
+
+  const playGreeting = useCallback(() => {
+    soundEngine.playPipGreeting();
   }, []);
 
   const playCandleBlow = useCallback(() => {
     soundEngine.playCandlePuff();
+  }, []);
+
+  const playPartyHorn = useCallback(() => {
+    soundEngine.playPartyHorn();
   }, []);
 
   const playScratchChime = useCallback(() => {
@@ -30,23 +42,21 @@ export function useAudio() {
     soundEngine.playCardReveal();
   }, []);
 
-  const playSealBreak = useCallback(() => {
-    soundEngine.playSealBreak();
-  }, []);
-
-  const playCelebration = useCallback(() => {
-    soundEngine.playCelebrationArpeggio();
+  const playFinaleFanfare = useCallback(() => {
+    soundEngine.playFinaleFanfare();
   }, []);
 
   return {
     unlockAudio,
     setMuted,
-    startAmbient,
-    stopAmbient,
+    startMusic,
+    stopMusic,
+    playPop,
+    playGreeting,
     playCandleBlow,
+    playPartyHorn,
     playScratchChime,
     playCardReveal,
-    playSealBreak,
-    playCelebration,
+    playFinaleFanfare,
   };
 }

@@ -2,15 +2,13 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { useAudio } from '../../audio/useAudio';
 
-interface ScratchCanvasProps {
-  width?: number;
-  height?: number;
+interface ScratchCardProps {
   onCompleted: () => void;
   isCompleted: boolean;
   children: React.ReactNode;
 }
 
-export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
+export const ScratchCard: React.FC<ScratchCardProps> = ({
   onCompleted,
   isCompleted,
   children,
@@ -22,68 +20,72 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
   const audio = useAudio();
   const [scratchProgress, setScratchProgress] = useState(0);
 
-  // Initialize and paint metallic gold scratch layer
-  const paintScratchOverlay = useCallback((canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
+  // Paint festive pastel confetti scratch overlay
+  const paintOverlay = useCallback((canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D) => {
     const w = canvas.width;
     const h = canvas.height;
 
-    // Reset composite operation to normal draw
     ctx.globalCompositeOperation = 'source-over';
 
-    // Rich metallic gold gradient
+    // Cheerful pastel gradient (coral to butter yellow)
     const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#c29d5b');
-    grad.addColorStop(0.3, '#f0dbaf');
-    grad.addColorStop(0.5, '#d9b779');
-    grad.addColorStop(0.7, '#f3bd70');
-    grad.addColorStop(1, '#a88342');
+    grad.addColorStop(0, '#FB7185');
+    grad.addColorStop(0.5, '#FDBA74');
+    grad.addColorStop(1, '#FDE047');
 
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Subtle brushed metallic texture lines
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-    for (let y = 0; y < h; y += 4) {
-      ctx.fillRect(0, y, w, 1.5);
-    }
-
-    // Sparkle flecks on gold foil
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    for (let i = 0; i < 45; i++) {
-      const rx = (Math.sin(i * 99) * 0.5 + 0.5) * w;
-      const ry = (Math.cos(i * 77) * 0.5 + 0.5) * h;
+    // Decorative polka dot confetti on top
+    const colors = ['#38BDF8', '#2DD4BF', '#C084FC', '#FFFFFF'];
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = colors[i % colors.length];
+      const rx = (Math.sin(i * 123) * 0.5 + 0.5) * w;
+      const ry = (Math.cos(i * 321) * 0.5 + 0.5) * h;
       ctx.beginPath();
-      ctx.arc(rx, ry, (i % 3) + 1, 0, Math.PI * 2);
+      ctx.arc(rx, ry, (i % 4) + 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Center foil seal engraving text
+    // Center Stamp Callout
     ctx.save();
-    ctx.font = '600 15px "Plus Jakarta Sans", sans-serif';
-    ctx.fillStyle = 'rgba(40, 25, 50, 0.65)';
+    ctx.font = 'bold 16px "Fredoka", sans-serif';
+    ctx.fillStyle = '#1E1B4B';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.letterSpacing = '3px';
-    ctx.fillText('✦ SCRATCH TO UNCOVER ✦', w / 2, h / 2);
+    ctx.fillText('✨ SCRATCH WITH TOUCH TO REVEAL ✨', w / 2, h / 2);
     ctx.restore();
   }, []);
 
-  // Calculate percentage of erased pixels (throttled to offscreen buffer)
+  const triggerDissolve = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    audio.playCardReveal();
+    gsap.to(canvas, {
+      opacity: 0,
+      scale: 1.05,
+      duration: 0.6,
+      ease: 'power2.out',
+      onComplete: () => {
+        onCompleted();
+      },
+    });
+  }, [audio, onCompleted]);
+
+  // Periodic erased percentage check on downscaled grid
   const checkScratchPercentage = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || isCompleted) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Sample downscaled grid (30x20 points) for 60fps performance without reading millions of pixels
-    const sampleCols = 30;
-    const sampleRows = 20;
+    const sampleCols = 25;
+    const sampleRows = 18;
     const stepX = canvas.width / sampleCols;
     const stepY = canvas.height / sampleRows;
     let transparentCount = 0;
 
-    // Use a small stride to sample
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imgData.data;
     const totalSamples = sampleCols * sampleRows;
@@ -102,30 +104,12 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
     const percentage = Math.round((transparentCount / totalSamples) * 100);
     setScratchProgress(percentage);
 
-    // Auto-dissolve when threshold reached (50%)
-    if (percentage >= 50 && !isCompleted) {
-      triggerFoilDissolve();
+    if (percentage >= 48 && !isCompleted) {
+      triggerDissolve();
     }
-  }, [isCompleted]);
+  }, [isCompleted, triggerDissolve]);
 
-  // Smoothly dissolve the rest of the canvas with GSAP
-  const triggerFoilDissolve = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    audio.playCardReveal();
-    gsap.to(canvas, {
-      opacity: 0,
-      scale: 1.04,
-      duration: 0.9,
-      ease: 'power2.out',
-      onComplete: () => {
-        onCompleted();
-      },
-    });
-  }, [audio, onCompleted]);
-
-  // Erase stroke between points
+  // Stroke erasure interpolation
   const eraseStroke = useCallback((x0: number, y0: number, x1: number, y1: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -133,7 +117,7 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
     if (!ctx) return;
 
     ctx.globalCompositeOperation = 'destination-out';
-    const radius = 28; // Brush radius
+    const radius = 30; // Brush radius
     const dist = Math.hypot(x1 - x0, y1 - y0);
     const step = Math.max(1, radius * 0.4);
 
@@ -170,10 +154,9 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
     canvas.style.height = `${rect.height}px`;
 
     ctx.scale(dpr, dpr);
-    paintScratchOverlay(canvas, ctx);
-  }, [paintScratchOverlay]);
+    paintOverlay(canvas, ctx);
+  }, [paintOverlay]);
 
-  // Pointer Events Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (isCompleted) return;
     const canvas = canvasRef.current;
@@ -213,8 +196,7 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
 
     lastPointRef.current = { x: currentX, y: currentY };
 
-    // Play sparkle sound occasionally during scratching
-    if (Math.random() < 0.15) {
+    if (Math.random() < 0.2) {
       audio.playScratchChime();
     }
   };
@@ -231,18 +213,17 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
   };
 
   return (
-    <div className="flex flex-col items-center w-full max-w-md mx-auto">
-      {/* Scratchable Card Container */}
+    <div className="flex flex-col items-center w-full max-w-md mx-auto select-none">
       <div
         ref={containerRef}
-        className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-2xl shadow-black/80 border-2 border-gold-400/40 bg-plum-900"
+        className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden shadow-[6px_6px_0px_#1E1B4B] border-[3px] border-deep-ink bg-white"
       >
-        {/* Underlying Revealed Card Content */}
-        <div className="absolute inset-0 p-6 flex flex-col justify-between select-none">
+        {/* Revealed Secret Card Content */}
+        <div className="absolute inset-0 p-6 flex flex-col justify-between">
           {children}
         </div>
 
-        {/* Scratch Canvas Overlay */}
+        {/* Scratch Canvas Foil */}
         {!isCompleted && (
           <canvas
             ref={canvasRef}
@@ -250,7 +231,7 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerCancel={handlePointerUp}
-            className="absolute inset-0 w-full h-full touch-none cursor-pointer select-none"
+            className="absolute inset-0 w-full h-full touch-none cursor-pointer"
             style={{ zIndex: 20 }}
           />
         )}
@@ -258,22 +239,22 @@ export const ScratchCanvas: React.FC<ScratchCanvasProps> = ({
 
       {/* Progress & Quick Reveal Controls */}
       {!isCompleted && (
-        <div className="w-full flex items-center justify-between px-2 mt-4 text-xs tracking-wider">
-          <div className="flex items-center gap-2 text-gold-400/80">
+        <div className="w-full flex items-center justify-between px-2 mt-3.5 text-xs">
+          <div className="flex items-center gap-2 font-display font-semibold text-deep-ink">
             <span>Uncovered: {scratchProgress}%</span>
-            <div className="w-20 h-1.5 rounded-full bg-plum-800 overflow-hidden">
+            <div className="w-24 h-2 rounded-full bg-white border border-deep-ink overflow-hidden">
               <div
-                className="h-full bg-gold-400 transition-all duration-300"
-                style={{ width: `${Math.min(100, scratchProgress * 2)}%` }}
+                className="h-full bg-coral transition-all duration-300"
+                style={{ width: `${Math.min(100, scratchProgress * 2.1)}%` }}
               />
             </div>
           </div>
 
           <button
-            onClick={triggerFoilDissolve}
-            className="px-3.5 py-1.5 rounded-full bg-plum-900/60 hover:bg-gold-400/20 text-gold-300 border border-gold-400/30 uppercase tracking-widest text-[11px] transition-colors focus:outline-none focus:ring-1 focus:ring-gold-400"
+            onClick={triggerDissolve}
+            className="px-3.5 py-1.5 rounded-full bg-white hover:bg-yellow text-deep-ink border-2 border-deep-ink font-display font-bold text-xs uppercase tracking-wider shadow-[2px_2px_0px_#1E1B4B] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
           >
-            Reveal Instantly
+            Reveal Instantly ✨
           </button>
         </div>
       )}

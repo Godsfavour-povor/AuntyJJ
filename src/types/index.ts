@@ -1,20 +1,27 @@
 export type SceneId = 
-  | 'intro'
-  | 'scene_1_spark'
-  | 'scene_2_scratch'
-  | 'scene_3_memories'
+  | 'scene_1_portal'
+  | 'scene_2_party'
+  | 'scene_3_discovery'
   | 'scene_4_finale';
+
+export type CharacterMood = 
+  | 'idle'
+  | 'curious'
+  | 'surprised'
+  | 'happy'
+  | 'wishing'
+  | 'celebrating'
+  | 'pointing';
 
 export interface MemoryItem {
   id: string;
   title: string;
-  date?: string;
-  subtitle?: string;
+  badge: string;
+  funnySubtitle: string;
   description: string;
-  image?: string;
-  imageAlt?: string;
-  quote?: string;
-  accentIcon?: 'sparkles' | 'heart' | 'star' | 'feather';
+  pipComment: string;
+  accentColor: 'coral' | 'turquoise' | 'yellow' | 'lilac';
+  iconType: 'trophy' | 'polaroid' | 'origami' | 'star';
 }
 
 export interface BirthdayLetter {
@@ -28,28 +35,30 @@ export interface BirthdayLetter {
 export interface BirthdayConfig {
   sisterName: string;
   brotherName: string;
-  subtitle: string;
-  openingPrompt: string;
-  hiddenMessage: string;
+  portalGreeting: string;
+  portalPrompt: string;
+  wishIntro: string;
+  wishSilentPrompt: string;
+  scratchTitle: string;
   scratchHint: string;
-  memoriesPrompt: string;
+  scratchSecretMessage: string;
   memories: MemoryItem[];
   letter: BirthdayLetter;
   audio: {
     enableProceduralAudio: boolean;
-    bgMusicUrl?: string;
   };
 }
 
 export interface AdventureState {
   currentScene: SceneId;
+  characterMood: CharacterMood;
   isAudioMuted: boolean;
-  isAudioInitialized: boolean;
+  isAudioStarted: boolean;
   reducedMotion: boolean;
+  wishStage: 'intro' | 'making_wish' | 'blow_candles' | 'candles_blown';
+  scratchCompleted: boolean;
   exploredMemoryIds: string[];
   activeModalMemory: MemoryItem | null;
-  candleExtinguished: boolean;
-  scratchCompleted: boolean;
   letterOpened: boolean;
   celebrationFired: boolean;
 }
