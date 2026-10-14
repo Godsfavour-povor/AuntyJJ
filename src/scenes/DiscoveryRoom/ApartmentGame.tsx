@@ -65,11 +65,7 @@ const INITIAL_ITEMS: InteractiveItem[] = [
   },
 ];
 
-interface ApartmentGameProps {
-  isRotated?: boolean;
-}
-
-export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false }) => {
+export const ApartmentGame: React.FC = () => {
   const audio = useAudio();
 
   // Interactive items in the apartment
@@ -242,7 +238,7 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
       if ((k === 'enter' || k === ' ') && !modalOpenRef.current) {
         // Trigger interaction with closest nearby item
         const p = playerPosRef.current;
-        const nearby = items.find((i) => Math.hypot(p.x - i.x, p.y - i.y) < 13.5);
+        const nearby = items.find((i) => Math.hypot(p.x - i.x, p.y - i.y) < 14);
         if (nearby) {
           handleItemInteraction(nearby);
         }
@@ -268,23 +264,8 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
     if (!container) return;
     const rect = container.getBoundingClientRect();
 
-    let clickX: number;
-    let clickY: number;
-
-    if (!isRotated) {
-      clickX = ((e.clientX - rect.left) / rect.width) * 100;
-      clickY = ((e.clientY - rect.top) / rect.height) * 100;
-    } else {
-      // In 90deg clockwise rotation:
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-      const localWidth = rect.height;
-      const localHeight = rect.width;
-      const localX = (e.clientY - centerY) + localWidth / 2;
-      const localY = -(e.clientX - centerX) + localHeight / 2;
-      clickX = (localX / localWidth) * 100;
-      clickY = (localY / localHeight) * 100;
-    }
+    const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 100;
 
     targetPosRef.current = {
       x: Math.max(0, Math.min(100, clickX)),
@@ -312,13 +293,6 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
 
     let dx = e.clientX - centerX;
     let dy = e.clientY - centerY;
-
-    if (isRotated) {
-      const origDx = dx;
-      const origDy = dy;
-      dx = origDy;
-      dy = -origDx;
-    }
 
     const dist = Math.hypot(dx, dy);
 
@@ -391,7 +365,7 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
   return (
     <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center justify-center select-none h-full">
       {/* Top HUD Bar: Room Label and Present Counter */}
-      <div className="w-full max-w-[calc((100dvh-54px)*1.6)] neo-pill bg-white rounded-full px-3 sm:px-5 py-1 mb-1.5 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B] flex-shrink-0">
+      <div className="w-full max-w-[min(100%,calc((100dvh-60px)*1.6))] neo-pill bg-white rounded-full px-3 sm:px-5 py-1 mb-1.5 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B] flex-shrink-0">
         {/* Room Info with Live Color Dot */}
         <div className="flex items-center gap-2">
           <span
@@ -419,11 +393,11 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
       </div>
 
       {/* Main Apartment Container Viewport (Aspect 16:10 Landscape Game Canvas) */}
-      <div className="w-auto h-[82%] max-h-[82%] neo-card bg-[#FFFDF9] rounded-2xl sm:rounded-[28px] p-1 sm:p-2 relative flex items-center justify-center">
+      <div className="w-full max-w-[min(100%,calc((100dvh-75px)*1.6))] aspect-[16/10] neo-card bg-[#FFFDF9] rounded-2xl sm:rounded-[28px] p-1 sm:p-2 relative flex items-center justify-center flex-shrink-0">
         <div
           ref={apartmentRef}
           onClick={handleFloorClick}
-          className="relative h-full aspect-[16/10] bg-white border-[3px] sm:border-[4px] border-deep-ink overflow-hidden rounded-xl sm:rounded-2xl shadow-inner cursor-pointer"
+          className="relative w-full h-full bg-white border-[3px] sm:border-[4px] border-deep-ink overflow-hidden rounded-xl sm:rounded-2xl shadow-inner cursor-pointer"
         >
           {/* ================= ROOM 4: TOP FINAL SURPRISE ROOM (LAVENDER #F3E8FF) ================= */}
           <div className="absolute top-0 left-0 w-full h-[31%] bg-[#FAF8FF] border-b-[5px] border-deep-ink flex justify-center pointer-events-none">
@@ -508,40 +482,26 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
             </div>
           </div>
 
-          {/* ================= INTERACTIVE NODES LAYER (3 PRESENTS + 1 ROYAL ENVELOPE) ================= */}
+          {/* ================= INTERACTIVE NODES LAYER ON FLOOR (Z-10) ================= */}
           <div className="absolute inset-0 z-10 pointer-events-none">
             {items.map((item) => {
               const dist = Math.hypot(playerPos.x - item.x, playerPos.y - item.y);
-              const isNear = dist < 13.5;
-              const canOpen = item.type === 'present' || (item.type === 'envelope' && allPresentsUnlocked);
+              const isNear = dist < 14;
 
               return (
                 <div
                   key={item.id}
                   id={`node-${item.id}`}
                   style={{ left: `${item.x}%`, top: `${item.y}%` }}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center select-none"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center select-none pointer-events-auto cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleItemInteraction(item);
+                  }}
                 >
-                  {/* Floating Pink "OPEN" pill button when near */}
-                  {isNear && canOpen && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleItemInteraction(item);
-                      }}
-                      className="open-item-btn neo-btn mb-1.5 px-4 py-1 rounded-full bg-coral hover:bg-coral-dark text-white font-display font-extrabold text-xs tracking-wider uppercase animate-bounce cursor-pointer z-30 pointer-events-auto"
-                    >
-                      {item.unlocked ? 'OPEN AGAIN' : 'OPEN'}
-                    </button>
-                  )}
-
                   {/* Icon container */}
                   <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleItemInteraction(item);
-                    }}
-                    className={`relative cursor-pointer transition-transform duration-200 pointer-events-auto ${
+                    className={`relative cursor-pointer transition-transform duration-200 ${
                       isNear ? 'scale-110' : 'hover:scale-105'
                     }`}
                   >
@@ -664,7 +624,7 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
                   </div>
 
                   {/* Item Label Badge */}
-                  <div className="mt-1 px-3 py-0.5 rounded-full bg-white border-2 border-deep-ink text-[9px] sm:text-[10px] font-display font-extrabold tracking-wide text-deep-ink whitespace-nowrap shadow-sm">
+                  <div className="mt-1 px-2.5 py-0.5 rounded-full bg-white border-2 border-deep-ink text-[9px] sm:text-[10px] font-display font-extrabold tracking-wide text-deep-ink whitespace-nowrap shadow-sm">
                     {item.title}
                   </div>
                 </div>
@@ -672,7 +632,7 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
             })}
           </div>
 
-          {/* ================= DRESSED SISTER AVATAR CHARACTER ================= */}
+          {/* ================= DRESSED SISTER AVATAR CHARACTER (Z-20) ================= */}
           <div
             className="absolute z-20 w-14 h-16 -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-transform duration-75"
             style={{
@@ -726,20 +686,50 @@ export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false 
             </div>
           </div>
 
-          {/* ================= ON-SCREEN VIRTUAL JOYSTICK (BOTTOM-LEFT) ================= */}
+          {/* ================= ON-SCREEN VIRTUAL JOYSTICK (Z-30) ================= */}
           <div
             ref={joystickBaseRef}
             onPointerDown={handleJoystickPointerDown}
             onPointerMove={handleJoystickPointerMove}
             onPointerUp={handleJoystickPointerUp}
             onPointerCancel={handleJoystickPointerUp}
-            className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 w-16 h-16 sm:w-22 sm:h-22 rounded-full bg-white/95 border-[2.5px] sm:border-[3.5px] border-deep-ink shadow-[2.5px_2.5px_0px_#1E1B4B] flex items-center justify-center z-30 touch-none cursor-grab active:cursor-grabbing"
+            className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/95 border-[2.5px] sm:border-[3.5px] border-deep-ink shadow-[2.5px_2.5px_0px_#1E1B4B] flex items-center justify-center z-30 touch-none cursor-grab active:cursor-grabbing"
             title="Touch or Drag to walk"
           >
             <div
               ref={joystickKnobRef}
               className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-turquoise border-[2px] sm:border-[2.5px] border-deep-ink shadow-inner pointer-events-none transition-transform duration-75"
             />
+          </div>
+
+          {/* ================= FLOATING INTERACTION "OPEN" BUTTONS (Z-40: TOP-MOST ABOVE PLAYER & ALL ELEMENTS) ================= */}
+          <div className="absolute inset-0 z-40 pointer-events-none">
+            {items.map((item) => {
+              const dist = Math.hypot(playerPos.x - item.x, playerPos.y - item.y);
+              const isNear = dist < 14;
+              const canOpen = item.type === 'present' || (item.type === 'envelope' && allPresentsUnlocked);
+
+              if (!isNear || !canOpen) return null;
+
+              return (
+                <div
+                  key={`action-btn-${item.id}`}
+                  style={{ left: `${item.x}%`, top: `${item.y}%` }}
+                  className="absolute -translate-x-1/2 -translate-y-[135%] flex flex-col items-center pointer-events-auto z-40"
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleItemInteraction(item);
+                    }}
+                    className="open-item-btn neo-btn px-4 py-1.5 sm:px-5 sm:py-2 rounded-full bg-coral hover:bg-coral-dark text-white font-display font-extrabold text-xs sm:text-sm tracking-wider uppercase animate-bounce cursor-pointer shadow-[3px_3px_0px_#1E1B4B] active:translate-y-0.5"
+                    style={{ touchAction: 'manipulation' }}
+                  >
+                    {item.unlocked ? 'OPEN AGAIN' : 'OPEN'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {/* Desktop Controls Helper Badge (Bottom-Right) */}
