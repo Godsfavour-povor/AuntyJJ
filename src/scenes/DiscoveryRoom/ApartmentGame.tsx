@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useAudio } from '../../audio/useAudio';
+import { AudioToggle } from '../../components/HUD/AudioToggle';
 import { PresentBoxModal, type PresentItem } from './PresentBoxModal';
 import { CinematicEnvelopeModal } from './CinematicEnvelopeModal';
 
@@ -64,7 +65,11 @@ const INITIAL_ITEMS: InteractiveItem[] = [
   },
 ];
 
-export const ApartmentGame: React.FC = () => {
+interface ApartmentGameProps {
+  isRotated?: boolean;
+}
+
+export const ApartmentGame: React.FC<ApartmentGameProps> = ({ isRotated = false }) => {
   const audio = useAudio();
 
   // Interactive items in the apartment
@@ -262,9 +267,29 @@ export const ApartmentGame: React.FC = () => {
     const container = apartmentRef.current;
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    const clickX = ((e.clientX - rect.left) / rect.width) * 100;
-    const clickY = ((e.clientY - rect.top) / rect.height) * 100;
-    targetPosRef.current = { x: clickX, y: clickY };
+
+    let clickX: number;
+    let clickY: number;
+
+    if (!isRotated) {
+      clickX = ((e.clientX - rect.left) / rect.width) * 100;
+      clickY = ((e.clientY - rect.top) / rect.height) * 100;
+    } else {
+      // In 90deg clockwise rotation:
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const localWidth = rect.height;
+      const localHeight = rect.width;
+      const localX = (e.clientY - centerY) + localWidth / 2;
+      const localY = -(e.clientX - centerX) + localHeight / 2;
+      clickX = (localX / localWidth) * 100;
+      clickY = (localY / localHeight) * 100;
+    }
+
+    targetPosRef.current = {
+      x: Math.max(0, Math.min(100, clickX)),
+      y: Math.max(0, Math.min(100, clickY)),
+    };
     audio.playPop();
   };
 
@@ -283,10 +308,18 @@ export const ApartmentGame: React.FC = () => {
     const rect = base.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    const maxRadius = rect.width * 0.32;
+    const maxRadius = Math.min(rect.width, rect.height) * 0.32;
 
     let dx = e.clientX - centerX;
     let dy = e.clientY - centerY;
+
+    if (isRotated) {
+      const origDx = dx;
+      const origDy = dy;
+      dx = origDy;
+      dy = -origDx;
+    }
+
     const dist = Math.hypot(dx, dy);
 
     if (dist > maxRadius) {
@@ -356,9 +389,9 @@ export const ApartmentGame: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center select-none [@media(max-height:560px)]:h-[98dvh] [@media(max-height:560px)]:justify-center">
+    <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center justify-center select-none h-full">
       {/* Top HUD Bar: Room Label and Present Counter */}
-      <div className="w-full [@media(max-height:560px)]:max-w-[calc((100dvh-50px)*1.6)] neo-pill bg-white rounded-full px-3.5 sm:px-5 py-1 sm:py-1.5 mb-1.5 sm:mb-2 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B] flex-shrink-0">
+      <div className="w-full max-w-[calc((100dvh-54px)*1.6)] neo-pill bg-white rounded-full px-3 sm:px-5 py-1 mb-1.5 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B] flex-shrink-0">
         {/* Room Info with Live Color Dot */}
         <div className="flex items-center gap-2">
           <span
@@ -371,21 +404,26 @@ export const ApartmentGame: React.FC = () => {
           <span className="text-sm">{roomInfo.emoji}</span>
         </div>
 
-        {/* Present Unlock Progress Counter */}
-        <div className="flex items-center gap-1.5 text-deep-ink">
-          <span className="text-coral text-sm sm:text-base">🎁</span>
-          <span className="font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider">
-            {openedPresentsCount}/3 UNLOCKED
-          </span>
+        {/* Right side: AudioToggle & Present Unlock Progress Counter */}
+        <div className="flex items-center gap-2.5 sm:gap-4">
+          <div className="scale-85 sm:scale-95 origin-right">
+            <AudioToggle />
+          </div>
+          <div className="flex items-center gap-1.5 text-deep-ink">
+            <span className="text-coral text-sm sm:text-base">🎁</span>
+            <span className="font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider">
+              {openedPresentsCount}/3 UNLOCKED
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Main Apartment Container Viewport (Aspect 16:10 Landscape Game Canvas) */}
-      <div className="w-full [@media(max-height:560px)]:w-[calc((100dvh-50px)*1.6)] [@media(max-height:560px)]:max-w-[calc((100dvh-50px)*1.6)] neo-card bg-[#FFFDF9] rounded-2xl sm:rounded-[28px] p-1 sm:p-2 relative flex items-center justify-center">
+      <div className="w-auto h-[82%] max-h-[82%] neo-card bg-[#FFFDF9] rounded-2xl sm:rounded-[28px] p-1 sm:p-2 relative flex items-center justify-center">
         <div
           ref={apartmentRef}
           onClick={handleFloorClick}
-          className="relative w-full aspect-[16/10] [@media(max-height:560px)]:h-[calc(100dvh-64px)] bg-white border-[3px] sm:border-[4px] border-deep-ink overflow-hidden rounded-xl sm:rounded-2xl shadow-inner cursor-pointer"
+          className="relative h-full aspect-[16/10] bg-white border-[3px] sm:border-[4px] border-deep-ink overflow-hidden rounded-xl sm:rounded-2xl shadow-inner cursor-pointer"
         >
           {/* ================= ROOM 4: TOP FINAL SURPRISE ROOM (LAVENDER #F3E8FF) ================= */}
           <div className="absolute top-0 left-0 w-full h-[31%] bg-[#FAF8FF] border-b-[5px] border-deep-ink flex justify-center pointer-events-none">

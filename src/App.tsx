@@ -25,14 +25,16 @@ const AdventureContent: React.FC = () => {
 
   return (
     <div className="relative min-h-screen w-full bg-cream text-deep-ink font-sans overflow-x-hidden selection:bg-yellow selection:text-deep-ink">
-      {/* Global Fixed HUD: Discreet Sound Toggle in top-left, top-right completely clean */}
-      <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between p-3.5 sm:p-5 pointer-events-none">
-        <div className="pointer-events-auto">
-          <AudioToggle />
-        </div>
-        {/* Top-Right intentionally clean & empty */}
-        <div />
-      </header>
+      {/* Global Fixed HUD: Discreet Sound Toggle in top-left (Scene 3 integrates it directly into the game HUD bar) */}
+      {currentScene !== 'scene_3_discovery' && (
+        <header className="fixed top-0 inset-x-0 z-40 flex items-center justify-between p-3.5 sm:p-5 pointer-events-none">
+          <div className="pointer-events-auto">
+            <AudioToggle />
+          </div>
+          {/* Top-Right intentionally clean & empty */}
+          <div />
+        </header>
+      )}
 
       {/* Main Interactive Scene Switcher */}
       <main className="w-full min-h-screen">
