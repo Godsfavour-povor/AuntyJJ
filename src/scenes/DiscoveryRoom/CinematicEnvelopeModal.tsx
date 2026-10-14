@@ -228,7 +228,7 @@ export const CinematicEnvelopeModal: React.FC<CinematicEnvelopeModalProps> = ({ 
       role="dialog"
       aria-modal="true"
       onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-[#0F172A]/85 backdrop-blur-md select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-5 bg-[#0F172A]/85 backdrop-blur-md select-none overflow-y-auto"
       style={{ perspective: '1600px' }}
     >
       {/* Cinematic Status Caption (Top Center) - Only visible during envelope stage */}
@@ -368,7 +368,7 @@ export const CinematicEnvelopeModal: React.FC<CinematicEnvelopeModalProps> = ({ 
         {/* ================= 2. THE FULL-PAGE LETTER (SCROLLABLE WITH INTUITIVE PEEK) ================= */}
         <div
           ref={fullLetterSheetRef}
-          className="w-full max-w-xl h-[88vh] sm:h-[86vh] max-h-[720px] bg-[#FFFDF7] border-[4px] border-deep-ink rounded-3xl p-5 sm:p-7 shadow-[8px_8px_0px_#1E1B4B] flex flex-col relative overflow-hidden z-30"
+          className="w-full max-w-xl [@media(max-height:560px)]:max-w-2xl h-[88vh] sm:h-[86vh] [@media(max-height:560px)]:h-[96vh] max-h-[720px] bg-[#FFFDF7] border-[3.5px] sm:border-[4px] border-deep-ink rounded-3xl p-4 sm:p-7 [@media(max-height:560px)]:p-3 shadow-[8px_8px_0px_#1E1B4B] flex flex-col relative overflow-hidden z-30"
           style={{
             backgroundImage:
               'radial-gradient(rgba(217, 119, 6, 0.04) 1px, transparent 0), linear-gradient(to right, rgba(245, 158, 11, 0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(245, 158, 11, 0.03) 1px, transparent 1px)',
@@ -376,17 +376,17 @@ export const CinematicEnvelopeModal: React.FC<CinematicEnvelopeModalProps> = ({ 
           }}
         >
           {/* Header & Salutation (Handwriting typography) */}
-          <div className="border-b-2 border-amber-900/15 pb-3 mb-2 flex-shrink-0">
-            <span className="font-handwritten text-lg sm:text-xl font-bold uppercase tracking-wider text-coral block">
+          <div className="border-b-2 border-amber-900/15 pb-2.5 mb-2 [@media(max-height:560px)]:pb-1.5 [@media(max-height:560px)]:mb-1 flex-shrink-0">
+            <span className="font-handwritten text-base sm:text-xl font-bold uppercase tracking-wider text-coral block">
               Final Birthday Keepsake ✨
             </span>
-            <h2 className="font-handwritten text-3xl sm:text-4xl font-bold text-deep-ink mt-0.5 leading-tight">
+            <h2 className="font-handwritten text-2xl sm:text-4xl font-bold text-deep-ink mt-0.5 leading-tight">
               My Dearest Sister, My Love ❤️
             </h2>
           </div>
 
           {/* Main Body Area: Smooth scrollable letter with peek affordance */}
-          <div className="relative flex-1 overflow-hidden min-h-[300px]">
+          <div className="relative flex-1 overflow-hidden min-h-0">
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}

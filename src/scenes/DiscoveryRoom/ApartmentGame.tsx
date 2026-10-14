@@ -356,16 +356,16 @@ export const ApartmentGame: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center select-none">
+    <div className="relative w-full max-w-4xl mx-auto flex flex-col items-center select-none [@media(max-height:560px)]:h-[98dvh] [@media(max-height:560px)]:justify-center">
       {/* Top HUD Bar: Room Label and Present Counter */}
-      <div className="w-full neo-pill bg-white rounded-full px-4 sm:px-5 py-2.5 mb-3 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B]">
+      <div className="w-full [@media(max-height:560px)]:max-w-[calc((100dvh-50px)*1.6)] neo-pill bg-white rounded-full px-3.5 sm:px-5 py-1 sm:py-1.5 mb-1.5 sm:mb-2 flex items-center justify-between text-xs sm:text-sm font-extrabold tracking-wider shadow-[3px_3px_0px_#1E1B4B] flex-shrink-0">
         {/* Room Info with Live Color Dot */}
         <div className="flex items-center gap-2">
           <span
-            className="w-3.5 h-3.5 rounded-full inline-block border border-deep-ink transition-colors"
+            className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-full inline-block border border-deep-ink transition-colors"
             style={{ backgroundColor: roomInfo.color }}
           />
-          <span className="uppercase text-deep-ink font-display font-bold">
+          <span className="uppercase text-deep-ink font-display font-bold text-[11px] sm:text-sm">
             {roomInfo.name}
           </span>
           <span className="text-sm">{roomInfo.emoji}</span>
@@ -373,19 +373,19 @@ export const ApartmentGame: React.FC = () => {
 
         {/* Present Unlock Progress Counter */}
         <div className="flex items-center gap-1.5 text-deep-ink">
-          <span className="text-coral text-base">🎁</span>
-          <span className="font-display font-bold text-xs uppercase tracking-wider">
+          <span className="text-coral text-sm sm:text-base">🎁</span>
+          <span className="font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider">
             {openedPresentsCount}/3 UNLOCKED
           </span>
         </div>
       </div>
 
-      {/* Main Apartment Container Viewport (Aspect 16:10 Neo-Card) */}
-      <div className="w-full neo-card bg-[#FFFDF9] rounded-[28px] p-2 sm:p-4 relative">
+      {/* Main Apartment Container Viewport (Aspect 16:10 Landscape Game Canvas) */}
+      <div className="w-full [@media(max-height:560px)]:w-[calc((100dvh-50px)*1.6)] [@media(max-height:560px)]:max-w-[calc((100dvh-50px)*1.6)] neo-card bg-[#FFFDF9] rounded-2xl sm:rounded-[28px] p-1 sm:p-2 relative flex items-center justify-center">
         <div
           ref={apartmentRef}
           onClick={handleFloorClick}
-          className="relative w-full aspect-[16/10] bg-white border-[4px] border-deep-ink overflow-hidden rounded-2xl shadow-inner cursor-pointer"
+          className="relative w-full aspect-[16/10] [@media(max-height:560px)]:h-[calc(100dvh-64px)] bg-white border-[3px] sm:border-[4px] border-deep-ink overflow-hidden rounded-xl sm:rounded-2xl shadow-inner cursor-pointer"
         >
           {/* ================= ROOM 4: TOP FINAL SURPRISE ROOM (LAVENDER #F3E8FF) ================= */}
           <div className="absolute top-0 left-0 w-full h-[31%] bg-[#FAF8FF] border-b-[5px] border-deep-ink flex justify-center pointer-events-none">
@@ -695,12 +695,12 @@ export const ApartmentGame: React.FC = () => {
             onPointerMove={handleJoystickPointerMove}
             onPointerUp={handleJoystickPointerUp}
             onPointerCancel={handleJoystickPointerUp}
-            className="absolute bottom-3 left-3 sm:bottom-5 sm:left-5 w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white/95 border-[3.5px] border-deep-ink shadow-[4px_4px_0px_#1E1B4B] flex items-center justify-center z-30 touch-none cursor-grab active:cursor-grabbing"
+            className="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 w-16 h-16 sm:w-22 sm:h-22 rounded-full bg-white/95 border-[2.5px] sm:border-[3.5px] border-deep-ink shadow-[2.5px_2.5px_0px_#1E1B4B] flex items-center justify-center z-30 touch-none cursor-grab active:cursor-grabbing"
             title="Touch or Drag to walk"
           >
             <div
               ref={joystickKnobRef}
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-turquoise border-[3px] border-deep-ink shadow-inner pointer-events-none transition-transform duration-75"
+              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-turquoise border-[2px] sm:border-[2.5px] border-deep-ink shadow-inner pointer-events-none transition-transform duration-75"
             />
           </div>
 

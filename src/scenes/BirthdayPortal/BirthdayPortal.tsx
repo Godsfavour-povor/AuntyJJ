@@ -19,7 +19,7 @@ export const BirthdayPortal: React.FC = () => {
   };
 
   return (
-    <div className="relative h-screen max-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden bg-gradient-to-b from-[#BAE6FD] via-[#E0F2FE] to-[#FFFDF8] select-none">
+    <div className="relative h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-full flex flex-col items-center justify-between p-3.5 sm:p-8 overflow-hidden bg-gradient-to-b from-[#BAE6FD] via-[#E0F2FE] to-[#FFFDF8] select-none">
       {/* Festive Bunting Garland across Top */}
       <div className="absolute top-0 inset-x-0 flex justify-between pointer-events-none px-2 z-10 overflow-hidden">
         {[...Array(14)].map((_, i) => (

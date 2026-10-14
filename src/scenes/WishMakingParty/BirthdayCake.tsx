@@ -17,7 +17,7 @@ export const BirthdayCake: React.FC<BirthdayCakeProps> = ({
   return (
     <div
       onClick={!allBlown ? onBlowCandles : undefined}
-      className="relative w-72 sm:w-80 md:w-96 h-72 sm:h-80 md:h-96 mx-auto flex items-center justify-center select-none cursor-pointer"
+      className="relative w-64 sm:w-80 md:w-96 h-64 sm:h-80 md:h-96 mx-auto flex items-center justify-center select-none cursor-pointer"
       role="button"
       tabIndex={0}
       aria-label="Delicious 3-Tier Birthday Cake"

@@ -286,19 +286,19 @@ export const WishMakingParty: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-between p-4 sm:p-8 overflow-hidden bg-gradient-to-b from-[#FEF3C7] via-[#FFFDF8] to-[#FDF4FF] select-none">
+    <div className="relative min-h-[100dvh] h-[100dvh] max-h-[100dvh] w-full flex flex-col items-center justify-between p-3.5 sm:p-6 overflow-hidden bg-gradient-to-b from-[#FEF3C7] via-[#FFFDF8] to-[#FDF4FF] select-none">
       {/* Infinite Flower Burst Shower from the top once all candles are blown */}
       {allCandlesBlown && <InfiniteFlowerShower />}
 
       {/* Top Header */}
-      <header className="relative z-10 text-center max-w-lg mt-12 sm:mt-10 space-y-1">
-        <h1 className="text-2xl sm:text-4xl font-display font-bold text-deep-ink tracking-tight">
+      <header className="relative z-10 text-center max-w-lg mt-7 sm:mt-10 space-y-1">
+        <h1 className="text-xl sm:text-4xl font-display font-bold text-deep-ink tracking-tight">
           Happy Birthday, {BIRTHDAY_DATA.sisterName}!
         </h1>
       </header>
 
       {/* Center Cake & Pip Dialogue */}
-      <main className="relative z-10 flex flex-col items-center my-auto w-full max-w-2xl space-y-4">
+      <main className="relative z-10 flex flex-col items-center my-auto w-full max-w-2xl space-y-2 sm:space-y-4">
         {/* Pip's Dialogue */}
         <SpeechBubble tailPosition="bottom-left" className="mb-1 max-w-md">
           {!isWishing && (

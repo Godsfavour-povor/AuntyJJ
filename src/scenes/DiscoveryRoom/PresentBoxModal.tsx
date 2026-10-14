@@ -219,7 +219,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
       role="dialog"
       aria-modal="true"
       onClick={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-deep-ink/80 backdrop-blur-md select-none overflow-hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-deep-ink/80 backdrop-blur-md select-none overflow-y-auto"
       style={{ perspective: '1600px' }}
     >
       {/* Ambient Radial Glow matching the box color */}
@@ -232,11 +232,11 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
         }}
       />
 
-      <div className="relative w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
+      <div className="relative w-full max-w-4xl flex flex-col items-center justify-center [@media(min-height:560px)]:min-h-[500px]">
         {/* Step Status Pill using direct ref (visible only while box is opening, removed when picture appears) */}
         <div
           ref={hintTextRef}
-          className="px-4 py-1.5 rounded-full bg-white border-[3px] border-deep-ink shadow-[3px_3px_0px_#1E1B4B] text-xs font-display font-extrabold uppercase tracking-wider text-deep-ink mb-6 z-30 animate-fade-in"
+          className="px-4 py-1.5 rounded-full bg-white border-[3px] border-deep-ink shadow-[3px_3px_0px_#1E1B4B] text-xs font-display font-extrabold uppercase tracking-wider text-deep-ink mb-4 [@media(max-height:560px)]:mb-1.5 z-30 animate-fade-in"
         >
           ✨ Bringing your present out of the room...
         </div>
@@ -249,7 +249,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
           {/* RISING KEEPSAKE CARD: Boosted width and height, picture fits cleanly in frame */}
           <div
             ref={presentCardRef}
-            className={`w-[92vw] max-w-lg sm:max-w-xl md:max-w-2xl border-[4px] border-deep-ink shadow-[10px_10px_0px_#1E1B4B] rounded-3xl p-4 sm:p-6 flex flex-col items-center text-center z-20 ${
+            className={`w-[92vw] max-w-lg sm:max-w-xl md:max-w-2xl border-[4px] border-deep-ink shadow-[10px_10px_0px_#1E1B4B] rounded-3xl p-3.5 sm:p-6 [@media(max-height:560px)]:p-2 flex flex-col items-center text-center z-20 ${
               isDone ? 'pointer-events-auto' : 'pointer-events-none'
             }`}
             style={{
@@ -257,7 +257,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             }}
           >
             {/* Custom Photo Frame: wide, boosted height & width, photo clean inside */}
-            <div className="w-full h-[52vh] sm:h-[58vh] max-h-[500px] rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/60 shadow-inner flex items-center justify-center p-1.5 mb-2.5">
+            <div className="w-full h-[50vh] sm:h-[58vh] max-h-[500px] [@media(max-height:560px)]:h-[40vh] [@media(max-height:560px)]:max-h-[175px] rounded-2xl border-[3.5px] border-deep-ink overflow-hidden bg-amber-50/60 shadow-inner flex items-center justify-center p-1.5 mb-2 [@media(max-height:560px)]:mb-1">
               <img
                 src={photoUrl}
                 alt={present.title}
@@ -266,8 +266,8 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             </div>
 
             {/* Just beneath the picture with the handwriting stuff: single line */}
-            <div className="w-full py-1">
-              <p className="font-handwritten text-3xl sm:text-4xl md:text-5xl font-bold text-coral text-center tracking-wide leading-tight">
+            <div className="w-full py-0.5">
+              <p className="font-handwritten text-3xl sm:text-4xl md:text-5xl [@media(max-height:560px)]:text-2xl font-bold text-coral text-center tracking-wide leading-tight">
                 {present.message}
               </p>
             </div>
@@ -275,7 +275,7 @@ export const PresentBoxModal: React.FC<PresentBoxModalProps> = ({ present, onClo
             {/* Action Button: 'Continue Exploring' */}
             <button
               onClick={handleCollect}
-              className="w-full py-3.5 sm:py-4 mt-2.5 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3.5px] border-deep-ink font-display font-extrabold text-sm sm:text-base uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
+              className="w-full py-3.5 sm:py-4 [@media(max-height:560px)]:py-2 mt-2 [@media(max-height:560px)]:mt-1 rounded-2xl bg-turquoise hover:bg-turquoise-dark text-deep-ink border-[3.5px] border-deep-ink font-display font-extrabold text-sm sm:text-base uppercase tracking-wider shadow-[4px_4px_0px_#1E1B4B] hover:translate-x-0.5 hover:translate-y-0.5 active:translate-x-1 active:translate-y-1 transition-all cursor-pointer flex items-center justify-center gap-2 pointer-events-auto"
             >
               <Check className="w-5 h-5 stroke-[2.5]" />
               <span>Continue Exploring ✨</span>
