@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-plum-950: #170e1c;
+  --color-plum-900: #211627;
+  --color-plum-800: #302038;
+  --color-plum-700: #422d4c;
+  
+  --color-gold-300: #f0dbaf;
+  --color-gold-400: #d9b779;
+  --color-gold-500: #c29d5b;
+  
+  --color-amber-300: #fde09e;
+  --color-amber-400: #f3bd70;
+  --color-amber-500: #e09f45;
+  
+  --color-rose-300: #ebd0d4;
+  --color-rose-400: #d9a3aa;
+  
+  --color-ivory: #f8f0e5;
+  --color-ivory-muted: #c8beb3;
+  
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-script: "Pinyon Script", cursive;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background-color: #170e1c;
+  color: #f8f0e5;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom subtle scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #170e1c;
+}
+::-webkit-scrollbar-thumb {
+  background: #302038;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #d9b779;
+}
+
+/* Touch action isolation for scratch canvas */
+.touch-none {
+  touch-action: none;
+}
+
+/* Subtle glowing pulse */
+@keyframes ambientGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.03);
+  }
+}
+
+.animate-ambient-glow {
+  animation: ambientGlow 6s ease-in-out infinite;
+}
+
+/* Subtle float */
+@keyframes softFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-soft-float {
+  animation: softFloat 5s ease-in-out infinite;
+}
